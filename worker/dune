@@ -1,0 +1,26 @@
+(library
+ (name x_worker)
+ (libraries
+  brr
+  js_of_ocaml
+  js_of_ocaml-toplevel
+  x_protocol
+  merlin-js.worker
+  ocamlformat-lib
+  ocamlformat-lib.parser_extended
+  ocamlformat-lib.format_))
+
+(rule
+ (targets export.txt)
+ (deps export-stdlib.txt)
+ (action
+  (with-stdout-to
+   %{targets}
+   (progn
+    (cat %{deps})
+    (echo "Ast_mapper\n")))))
+
+(rule
+ (target export-stdlib.txt)
+ (action
+  (run jsoo_listunits -o %{target} stdlib)))

@@ -1,0 +1,3 @@
+(library
+ (name x_protocol)
+ (libraries merlin-js.protocol))

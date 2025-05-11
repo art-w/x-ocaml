@@ -1,0 +1,6 @@
+[submodule "merlin-js"]
+	path = merlin-js
+	url = https://github.com/art-w/merlin-js
+[submodule "jsoo-code-mirror"]
+	path = jsoo-code-mirror
+	url = https://github.com/art-w/jsoo-code-mirror

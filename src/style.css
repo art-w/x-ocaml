@@ -1,0 +1,76 @@
+:host { display: block; position: relative; font-family: monospace; font-size: 1.2em }
+.cm-editor.cm-focused { outline: 1px dotted #AAA !important }
+.cm-tooltip-section {
+  max-width: 400px;
+  height: 1lh;
+  text-overflow: ellipsis; /* not working, because width/height must be px(?) */
+  padding: 0.3em 0.5em;
+  overflow: hidden;
+}
+.cm-lineNumbers { min-width: 30px }
+.cm-activeLine, .cm-activeLineGutter { background: transparent !important }
+.cm-focused .cm-activeLine,
+.cm-focused .cm-activeLineGutter
+{
+  background: #AAA2 !important;
+}
+
+.run_btn {
+  position: absolute; width: 100%; height: 100%; z-index: 999; pointer-events: none
+}
+button {
+  pointer-events: auto;
+  position: absolute; right: 0; top: 0;
+  display: block;
+  cursor: pointer;
+  display: inline-block;
+  --radius: calc(0.5rem + 4px);
+  box-sizing: border-box;
+  min-width: calc(2 * var(--radius));
+  height: calc(2 * var(--radius));
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+  background-color: #F5F5F5;
+  border: 1px solid #6D6D6D;
+  color: #6D6D6D;
+}
+button:hover { background-color: #6D6D6D; color: #F5F5F5; }
+button:hover::after { border-color: transparent transparent transparent #F5F5F5; }
+button::after {
+  content: "";
+  display: inline-block;
+  position: relative;
+  left: 0;
+  top: 1px;
+  margin-left: 0.4rem;
+  box-sizing: border-box;
+  --radius: 0.35rem;
+  width: calc(2 * var(--radius));
+  height: calc(2 * var(--radius));
+  border-color: transparent transparent transparent #6D6D6D;
+  border-style: solid;
+  border-width: var(--radius) 0 var(--radius) calc(2 * var(--radius));
+}
+
+.caml_stdout {
+  background: #E8F6FF;
+  color: #141A6A;
+  margin: 0;
+  padding: 0.2em 0.2em;
+  padding-left: 0.7em;
+}
+.caml_stderr {
+  background: #FDEEEE;
+  color: #EB5656;
+  margin: 0;
+  padding: 0.2em 0.2em;
+  padding-left: 0.7em;
+}
+.caml_meta {
+  margin: 0;
+  padding: 0.2em 0.5em;
+  font-style: italic;
+  color: #444;
+  padding-bottom: 0.5em;
+  background: #eee;
+}

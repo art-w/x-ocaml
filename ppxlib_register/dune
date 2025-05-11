@@ -1,0 +1,3 @@
+(library
+ (public_name ppxlib_register)
+ (libraries ppxlib))

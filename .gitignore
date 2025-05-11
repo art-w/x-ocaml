@@ -1,0 +1,15 @@
+*.annot
+*.cmo
+*.cma
+*.cmi
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
+
+.merlin
+*.install
+*.sw[lmnop]
+
+_build/

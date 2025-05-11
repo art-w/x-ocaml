@@ -1,0 +1,13 @@
+(executable
+ (name x_ocaml)
+ (libraries
+  brr
+  code-mirror
+  merlin-js.client
+  merlin-js.code-mirror
+  x_protocol)
+ (modes js)
+ (preprocess
+  (pps ppx_blob))
+ (preprocessor_deps
+  (file style.css)))

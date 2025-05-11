@@ -1,0 +1,22 @@
+(vendored_dirs jsoo-code-mirror merlin-js)
+
+(rule
+ (mode promote)
+ (target x-ocaml.js)
+ (deps src/x_ocaml.bc.js)
+ (action
+  (copy %{deps} %{target})))
+
+(rule
+ (mode promote)
+ (target x-ocaml.worker+effects.js)
+ (deps worker/effects/x_worker.bc.js)
+ (action
+  (copy %{deps} %{target})))
+
+(rule
+ (mode promote)
+ (target x-ocaml.worker.js)
+ (deps worker/no-effects/x_worker.bc.js)
+ (action
+  (copy %{deps} %{target})))

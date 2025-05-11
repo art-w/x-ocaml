@@ -1,0 +1,10 @@
+(executable
+ (name x_worker)
+ (libraries x_worker)
+ (modes js)
+ (js_of_ocaml
+  (flags
+   --export=%{dep:../export.txt}
+   --toplevel
+   --effects=cps
+   --enable=effects)))

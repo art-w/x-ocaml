@@ -1,0 +1,5 @@
+(executable
+ (public_name x-ocaml)
+ (name x_ocaml)
+ (libraries bos cmdliner)
+ (package x-ocaml))
