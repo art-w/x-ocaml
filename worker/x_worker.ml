@@ -5,8 +5,8 @@ let respond m = Js_of_ocaml.Worker.post_message (X_protocol.resp_to_bytes m)
 let reformat ~id code =
   let code' =
     try Ocamlfmt.fmt code
-    with err ->
-      (* Brr.Console.log [ "ocamlformat error"; Printexc.to_string err ]; *)
+    with _err ->
+      (* Brr.Console.log [ "ocamlformat error"; Printexc.to_string _err ]; *)
       code
   in
   if code <> code' then respond (Formatted_source (id, code'));
