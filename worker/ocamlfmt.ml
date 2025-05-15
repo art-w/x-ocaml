@@ -1,7 +1,5 @@
 open Ocamlformat_stdlib
 open Ocamlformat_lib
-module Format_ = Ocamlformat_format.Format_
-module Parser_extended = Ocamlformat_parser_extended
 
 let conf = Ocamlformat_lib.Conf.default
 
