@@ -31,7 +31,7 @@ let fix_request t msg =
   | Protocol.All_errors src -> Protocol.All_errors (pre ^ src)
   | Protocol.Add_cmis _ as other -> other
 
-let fix_answer pre msg =
+let fix_answer ~pre ~doc msg =
   let pre_len = String.length pre in
   match (msg : Protocol.answer) with
   | Protocol.Errors errors ->
@@ -41,7 +41,8 @@ let fix_answer pre msg =
              let loc = fix_loc pre_len e.loc in
              let from = loc.loc_start.pos_cnum in
              let to_ = loc.loc_end.pos_cnum in
-             if from < 0 || to_ < 0 then None else Some { e with loc })
+             if from < 0 || to_ > String.length doc then None
+             else Some { e with loc })
            errors)
   | Protocol.Completions completions ->
       Completions

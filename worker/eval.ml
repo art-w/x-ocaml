@@ -24,11 +24,9 @@ let reset id =
 let rec parse_use_file ~caml_ppf lex =
   let _at = lex.Lexing.lex_curr_pos in
   match !Toploop.parse_toplevel_phrase lex with
-  | ok -> ok :: parse_use_file ~caml_ppf lex
+  | ok -> Ok ok :: parse_use_file ~caml_ppf lex
   | exception End_of_file -> []
-  | exception err ->
-      Errors.report_error caml_ppf err;
-      []
+  | exception err -> [ Error err ]
 
 let ppx_rewriters = ref []
 
@@ -46,13 +44,16 @@ let preprocess_phrase phrase =
   | Ptop_def str -> Ptop_def (preprocess_structure str)
   | Ptop_dir _ as x -> x
 
-let execute ~id ~output code_text =
+let execute ~id ~line_number ~output code_text =
   reset id;
   let outputs = ref [] in
   let buf = Buffer.create 64 in
   let caml_ppf = Format.formatter_of_buffer buf in
   let content = code_text ^ " ;;" in
-  let phrases = parse_use_file ~caml_ppf (Lexing.from_string content) in
+  let lexer = Lexing.from_string content in
+  Lexing.set_position lexer
+    { pos_fname = ""; pos_lnum = line_number; pos_bol = 0; pos_cnum = 0 };
+  let phrases = parse_use_file ~caml_ppf lexer in
   Js_of_ocaml.Sys_js.set_channel_flusher stdout (fun str ->
       outputs := Stdout str :: !outputs);
   Js_of_ocaml.Sys_js.set_channel_flusher stderr (fun str ->
@@ -66,34 +67,37 @@ let execute ~id ~output code_text =
     List.rev out
   in
   let respond ~(at_loc : Location.t) =
-    let loc = at_loc.loc_end.pos_cnum in
+    let loc = at_loc.loc_end.pos_cnum - line_number in
     let out = get_out () in
     output ~loc out
   in
   List.iter
-    (fun phrase ->
-      let sub_phrases =
-        match phrase with
-        | Parsetree.Ptop_def s -> List.map (fun s -> Parsetree.Ptop_def [ s ]) s
-        | Ptop_dir _ -> [ phrase ]
-      in
-      List.iter
-        (fun phrase ->
-          let at_loc =
+    (function
+      | Error err -> Errors.report_error caml_ppf err
+      | Ok phrase ->
+          let sub_phrases =
             match phrase with
-            | Parsetree.Ptop_def ({ pstr_loc = loc; _ } :: _) -> loc
-            | Ptop_dir { pdir_loc = loc; _ } -> loc
-            | _ -> assert false
+            | Parsetree.Ptop_def s ->
+                List.map (fun s -> Parsetree.Ptop_def [ s ]) s
+            | Ptop_dir _ -> [ phrase ]
           in
-          try
-            Location.reset ();
-            let phrase = preprocess_phrase phrase in
-            let _r = Toploop.execute_phrase true caml_ppf phrase in
-            respond ~at_loc
-          with _exn ->
-            Errors.report_error caml_ppf _exn;
-            respond ~at_loc)
-        sub_phrases)
+          List.iter
+            (fun phrase ->
+              let at_loc =
+                match phrase with
+                | Parsetree.Ptop_def ({ pstr_loc = loc; _ } :: _) -> loc
+                | Ptop_dir { pdir_loc = loc; _ } -> loc
+                | _ -> assert false
+              in
+              try
+                Location.reset ();
+                let phrase = preprocess_phrase phrase in
+                let _r = Toploop.execute_phrase true caml_ppf phrase in
+                respond ~at_loc
+              with _exn ->
+                Errors.report_error caml_ppf _exn;
+                respond ~at_loc)
+            sub_phrases)
     phrases;
   environments := (id, !Toploop.toplevel_env) :: !environments;
   get_out ()

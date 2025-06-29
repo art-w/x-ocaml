@@ -60,7 +60,8 @@ let rec run editor =
     | _ ->
         editor.status <- Running;
         let code_txt = Editor.source editor.cm in
-        Client.eval ~id:editor.id editor.worker code_txt)
+        let line_number = 1 + Editor.get_previous_lines editor.cm in
+        Client.eval ~id:editor.id ~line_number editor.worker code_txt)
 
 let set_prev ~prev t =
   let () = match t.prev with None -> () | Some prev -> prev.next <- None in
@@ -151,4 +152,4 @@ let completed_run ed msg =
 
 let receive_merlin t msg =
   Merlin_ext.Client.on_message t.merlin_worker
-    (Merlin_ext.fix_answer (pre_source t) msg)
+    (Merlin_ext.fix_answer ~pre:(pre_source t) ~doc:(Editor.source t.cm) msg)

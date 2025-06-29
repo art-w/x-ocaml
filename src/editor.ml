@@ -23,10 +23,13 @@ let render_messages cm =
   let ranges =
     Array.of_list
     @@ List.map (fun (at, msg) ->
-           let at = find_line_ends at doc in
            range ~from:at ~to_:at
            @@ widget ~block:true ~side:99
            @@ Widget.make (fun () -> msg))
+    @@ List.filter (fun (at, _) -> at <= String.length doc)
+    @@ List.map (fun (at, msg) ->
+           let at = find_line_ends at doc in
+           (at, msg))
     @@ List.concat
     @@ List.map (fun (loc, lst) -> List.map (fun m -> (loc, m)) lst)
     @@ List.sort (fun (a, _) (b, _) -> Int.compare a b) cm.messages
@@ -134,6 +137,7 @@ let count_lines str =
     !nb
 
 let nb_lines t = t.previous_lines + count_lines t.current_doc
+let get_previous_lines t = t.previous_lines
 
 let set_previous_lines t nb =
   t.previous_lines <- nb;

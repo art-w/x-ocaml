@@ -56,5 +56,8 @@ let on_message t fn =
   ()
 
 let post worker msg = Worker.post worker (X_protocol.req_to_bytes msg)
-let eval ~id worker code = post worker (Eval (id, code))
+
+let eval ~id ~line_number worker code =
+  post worker (Eval (id, line_number, code))
+
 let fmt ~id worker code = post worker (Format (id, code))

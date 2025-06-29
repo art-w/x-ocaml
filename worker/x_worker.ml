@@ -18,9 +18,9 @@ let run () =
   | Merlin (id, action) ->
       respond (Merlin_response (id, Merlin_worker.on_message action))
   | Format (id, code) -> ignore (reformat ~id code : string)
-  | Eval (id, code) ->
+  | Eval (id, line_number, code) ->
       let code = reformat ~id code in
       let output ~loc out = respond (Top_response_at (id, loc, out)) in
-      let result = Eval.execute ~output ~id code in
+      let result = Eval.execute ~output ~id ~line_number code in
       respond (Top_response (id, result))
   | Setup -> Eval.setup_toplevel ()
