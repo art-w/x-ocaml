@@ -2,6 +2,8 @@
 
 (generate_opam_files true)
 
+(name x-ocaml)
+
 (source
  (github art-w/x-ocaml))
 
