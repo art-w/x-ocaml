@@ -32,11 +32,13 @@ let elt_name =
   | None -> Jstr.of_string "x-ocaml"
   | Some name -> name
 
+let extra_style = current_attribute "src-style"
+
 let _ =
   Webcomponent.define elt_name @@ fun this ->
   let prev = match !all with [] -> None | e :: _ -> Some e in
   let id = List.length !all in
-  let editor = Cell.init ~id worker this in
+  let editor = Cell.init ~id ?extra_style worker this in
   all := editor :: !all;
   Cell.set_prev ~prev editor;
   ()
