@@ -1,6 +1,13 @@
 type t
 
-val init : id:int -> ?extra_style:Jstr.t -> Client.t -> Webcomponent.t -> t
+val init :
+  id:int ->
+  ?extra_style:Jstr.t ->
+  ?inline_style:Jstr.t ->
+  Client.t ->
+  Webcomponent.t ->
+  t
+
 val id : t -> int
 val set_source : t -> string -> unit
 val add_message : t -> int -> X_protocol.output list -> unit

@@ -84,12 +84,21 @@ let set_source_from_html editor this =
   invalidate_from ~editor;
   Client.fmt ~id:editor.id editor.worker doc
 
-let init ~id ?extra_style worker this =
-  let shadow = Webcomponent.attach_shadow this in
-
+let init_css shadow ~extra_style ~inline_style =
   El.append_children shadow
-    [ El.style [ El.txt @@ Jstr.of_string [%blob "style.css"] ] ];
-  (match extra_style with
+    [
+      El.style
+        (El.txt (Jstr.of_string [%blob "style.css"])
+        ::
+        (match inline_style with
+        | None -> []
+        | Some inline_style ->
+            [
+              El.txt
+              @@ Jstr.of_string (":host{" ^ Jstr.to_string inline_style ^ "}");
+            ]));
+    ];
+  match extra_style with
   | None -> ()
   | Some src_style ->
       El.append_children shadow
@@ -102,7 +111,11 @@ let init ~id ?extra_style worker this =
                 At.type' (Jstr.of_string "text/css");
               ]
             ();
-        ]);
+        ]
+
+let init ~id ?extra_style ?inline_style worker this =
+  let shadow = Webcomponent.attach_shadow this in
+  init_css shadow ~extra_style ~inline_style;
 
   let run_btn = El.button [ El.txt (Jstr.of_string "Run") ] in
   El.append_children shadow

@@ -33,12 +33,13 @@ let elt_name =
   | Some name -> name
 
 let extra_style = current_attribute "src-style"
+let inline_style = current_attribute "inline-style"
 
 let _ =
   Webcomponent.define elt_name @@ fun this ->
   let prev = match !all with [] -> None | e :: _ -> Some e in
   let id = List.length !all in
-  let editor = Cell.init ~id ?extra_style worker this in
+  let editor = Cell.init ~id ?extra_style ?inline_style worker this in
   all := editor :: !all;
   Cell.set_prev ~prev editor;
   ()
