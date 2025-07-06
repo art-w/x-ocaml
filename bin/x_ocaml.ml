@@ -29,7 +29,13 @@ let jsoo_safe_import =
 }
 (globalThis));|}
 
-type t = { name : string; incl : Cmd.t; cma : string; ppx : bool }
+type t = {
+  name : string;
+  incl : Cmd.t;
+  runtime : string option;
+  cma : string;
+  ppx : bool;
+}
 
 let jsoo_compile ~effects t temp_file =
   let toplevel = if t.ppx then Cmd.empty else Cmd.v "--toplevel" in
@@ -40,7 +46,18 @@ let jsoo_compile ~effects t temp_file =
   in
   let r = get_result @@ OS.Cmd.run_out cmd in
   Format.printf "%s%!" r;
-  Result.get_ok @@ Bos.OS.File.read temp_file
+  let jsoo_runtime =
+    match t.runtime with
+    | None -> ""
+    | Some runtime_file ->
+        let contents =
+          Result.get_ok
+          @@ Bos.OS.File.read (Result.get_ok @@ Fpath.of_string runtime_file)
+        in
+        "(function(joo_global_object){" ^ contents ^ "}(globalThis));\n"
+  in
+  let temp = Result.get_ok @@ Bos.OS.File.read temp_file in
+  jsoo_runtime ^ temp
 
 let jsoo_export_cma ~effects t =
   or_fail
@@ -48,11 +65,21 @@ let jsoo_export_cma ~effects t =
        (fun temp_file _ () -> jsoo_compile ~effects t temp_file)
        ()
 
+let ocamlfind_path lib =
+  get_result @@ OS.Cmd.run_out Cmd.(v "ocamlfind" % "query" % lib)
+
 let ocamlfind_includes lib =
   get_result
   @@ OS.Cmd.run_out
        Cmd.(
          v "ocamlfind" % "query" % lib % "-i-format" % "-predicates" % "byte")
+
+let ocamlfind_jsoo_runtime lib =
+  get_result
+  @@ OS.Cmd.run_out
+       Cmd.(
+         v "ocamlfind" % "query" % lib % "-format" % "%(jsoo_runtime)"
+         % "-predicates" % "byte")
 
 let ocamlfind_cma ~predicate lib =
   get_result
@@ -78,7 +105,16 @@ let make ~ppx ~predicate lib =
   | [ cma ] ->
       let incl = ocamlfind_includes lib in
       let incl = or_fail @@ Cmd.of_string incl in
-      Some { incl; cma; ppx; name = lib }
+      let runtime =
+        match ocamlfind_jsoo_runtime lib with
+        | "" -> None
+        | runtime ->
+            let path = ocamlfind_path lib in
+            let runtime = path ^ "/" ^ runtime in
+            Format.printf "jsoo_runtime(%s) = %S@." lib runtime;
+            Some runtime
+      in
+      Some { incl; runtime; cma; ppx; name = lib }
   | cmas ->
       fatal
         (Format.asprintf "expected one cma for %s, got %i" lib
@@ -129,7 +165,7 @@ let main effects targets ppxs output =
   try
     List.iter
       (fun t ->
-        Format.printf "%s@." t.name;
+        Format.printf "export %s@." t.name;
         let js = jsoo_export_cma ~effects t in
         output js)
       all;
