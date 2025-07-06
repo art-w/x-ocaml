@@ -1,0 +1,4 @@
+(library
+ (public_name x-ocaml.lib)
+ (name x_ocaml_lib)
+ (libraries x-ocaml.protocol js_of_ocaml))

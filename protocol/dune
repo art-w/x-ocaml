@@ -1,3 +1,4 @@
 (library
+ (public_name x-ocaml.protocol)
  (name x_protocol)
  (libraries merlin-js.protocol))

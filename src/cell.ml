@@ -158,15 +158,20 @@ let set_source editor doc =
   refresh_lines_from ~editor
 
 let render_message msg =
+  let raw_html s =
+    let el = El.div [] in
+    let el_t = El.to_jv el in
+    Jv.set el_t "innerHTML" (Jv.of_jstr @@ Jstr.of_string s);
+    el
+  in
   let kind, text =
     match msg with
-    | X_protocol.Stdout str -> ("stdout", str)
-    | Stderr str -> ("stderr", str)
-    | Meta str -> ("meta", str)
+    | X_protocol.Stdout str -> ("stdout", El.txt' str)
+    | Stderr str -> ("stderr", El.txt' str)
+    | Meta str -> ("meta", El.txt' str)
+    | Html str -> ("html", raw_html str)
   in
-  El.pre
-    ~at:[ At.class' (Jstr.of_string ("caml_" ^ kind)) ]
-    [ El.txt (Jstr.of_string text) ]
+  El.pre ~at:[ At.class' (Jstr.of_string ("caml_" ^ kind)) ] [ text ]
 
 let add_message t loc msg =
   Editor.add_message t.cm loc (List.map render_message msg)

@@ -39,8 +39,7 @@ let render_messages cm =
 let refresh_messages ed =
   Code_mirror.Editor.View.dispatch ed.view
     (Code_mirror.Compartment.reconfigure ed.messages_comp
-       [ render_messages ed ]);
-  Code_mirror.Editor.View.request_measure ed.view
+       [ render_messages ed ])
 
 let custom_ln editor =
   Code_mirror.Editor.View.line_numbers (fun x ->

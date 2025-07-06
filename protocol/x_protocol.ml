@@ -8,7 +8,11 @@ type request =
   | Format of id * string
   | Setup
 
-type output = Stdout of string | Stderr of string | Meta of string
+type output =
+  | Stdout of string
+  | Stderr of string
+  | Meta of string
+  | Html of string
 
 type response =
   | Merlin_response of id * Merlin_protocol.answer

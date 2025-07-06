@@ -152,7 +152,7 @@ let main effects targets ppxs output =
     | [] -> targets
     | _ -> targets @ ppxs @ [ "ppxlib_register" ]
   in
-  let env = Env.empty in
+  let env = Env.singleton "x-ocaml.lib" in
   let env, all_ppxs = dependencies ~ppx:true ppxs env in
   let _env, all_libs = dependencies ~ppx:false targets env in
   let all = all_ppxs @ all_libs in

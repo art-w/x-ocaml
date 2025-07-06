@@ -67,7 +67,7 @@ let execute ~id ~line_number ~output code_text =
     List.rev out
   in
   let respond ~(at_loc : Location.t) =
-    let loc = at_loc.loc_end.pos_cnum - line_number in
+    let loc = at_loc.loc_end.pos_cnum in
     let out = get_out () in
     output ~loc out
   in
@@ -89,6 +89,7 @@ let execute ~id ~line_number ~output code_text =
                 | Ptop_dir { pdir_loc = loc; _ } -> loc
                 | _ -> assert false
               in
+              X_ocaml_lib.id := (id, at_loc.loc_end.pos_cnum);
               try
                 Location.reset ();
                 let phrase = preprocess_phrase phrase in

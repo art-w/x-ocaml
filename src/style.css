@@ -74,3 +74,16 @@ button::after {
   padding-bottom: 0.5em;
   background: #eee;
 }
+.caml_html {
+  margin: 0;
+  padding: 0.2em 0.5em;
+  color: black;
+  border: 1px solid transparent;
+  white-space: collapse;
+}
+
+table, tr, td, th {
+  border: 1px solid black;
+  border-collapse: collapse;
+  padding: 0.2em;
+}
