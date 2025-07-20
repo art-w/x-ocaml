@@ -5,6 +5,16 @@ module Parser_extended = Ocamlformat_parser_extended
 
 let conf = Ocamlformat_lib.Conf.default
 
+let conf =
+  {
+    conf with
+    opr_opts =
+      {
+        conf.opr_opts with
+        ocaml_version = Conf.Elt.make (Ocaml_version.v 5 3) `Default;
+      };
+  }
+
 let ast source =
   Ocamlformat_lib.Parse_with_comments.parse
     (Ocamlformat_lib.Parse_with_comments.parse_ast conf)
