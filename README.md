@@ -2,8 +2,8 @@ Embed OCaml notebooks in any web page thanks to WebComponents! Just copy and pas
 
 ```html
 <script async
-  src="https://cdn.jsdelivr.net/gh/art-w/x-ocaml.js@2/x-ocaml.js"
-  src-worker="https://cdn.jsdelivr.net/gh/art-w/x-ocaml.js@2/x-ocaml.worker+effects.js"
+  src="https://cdn.jsdelivr.net/gh/art-w/x-ocaml.js@5/x-ocaml.js"
+  src-worker="https://cdn.jsdelivr.net/gh/art-w/x-ocaml.js@5/x-ocaml.worker+effects.js"
 ></script>
 ```
 
@@ -14,6 +14,8 @@ This will introduce a new html tag `<x-ocaml>` to present OCaml code, for exampl
 ```
 
 The script will initialize a CodeMirror editor integrated with the OCaml interpreter, Merlin and OCamlformat (all running in a web worker). [**Check out the online demo**](https://art-w.github.io/x-ocaml/) for more details, including how to load additional OCaml libraries and ppx in your page.
+
+For an even easier integration, @patricoferris made a command-line tool [`xocmd`](https://github.com/patricoferris/xocmd) to convert markdown files to use `<x-ocaml>`!
 
 ## Acknowledgments
 
