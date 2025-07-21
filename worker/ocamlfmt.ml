@@ -3,25 +3,46 @@ open Ocamlformat_lib
 module Format_ = Ocamlformat_format.Format_
 module Parser_extended = Ocamlformat_parser_extended
 
-let conf = Ocamlformat_lib.Conf.default
+let default_conf = Ocamlformat_lib.Conf.default
 
-let conf =
+let default_conf =
   {
-    conf with
+    default_conf with
     opr_opts =
       {
-        conf.opr_opts with
+        default_conf.opr_opts with
         ocaml_version = Conf.Elt.make (Ocaml_version.v 5 3) `Default;
       };
   }
 
-let ast source =
+let ghost_loc =
+  Ocamlformat_ocaml_common.Warnings.ghost_loc_in_file ".ocamlformat"
+
+let parse_conf str =
+  List.fold_left
+    ~f:(fun conf line ->
+      match Conf.parse_line conf ~from:(`File ghost_loc) line with
+      | Ok conf -> conf
+      | Error err ->
+          Brr.Console.error
+            [ "OCamlformat config error:"; line; Conf.Error.to_string err ];
+          conf)
+    ~init:default_conf
+    (String.split_on_chars ~on:[ '\n' ] str)
+
+let conf = ref (`Conf default_conf)
+
+let configure = function
+  | "disable" -> conf := `Disable
+  | str -> conf := `Conf (parse_conf str)
+
+let ast ~conf source =
   Ocamlformat_lib.Parse_with_comments.parse
     (Ocamlformat_lib.Parse_with_comments.parse_ast conf)
     Structure conf ~input_name:"source" ~source
 
-let fmt source =
-  let ast = ast source in
+let fmt ~conf source =
+  let ast = ast ~conf source in
   let with_buffer_formatter ~buffer_size k =
     let buffer = Buffer.create buffer_size in
     let fs = Format_.formatter_of_buffer buffer in
@@ -42,3 +63,6 @@ let fmt source =
           conf ast.ast)
   in
   String.strip (print ast)
+
+let fmt source =
+  match !conf with `Disable -> source | `Conf conf -> fmt ~conf source

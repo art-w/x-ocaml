@@ -5,8 +5,8 @@ let respond m = Js_of_ocaml.Worker.post_message (X_protocol.resp_to_bytes m)
 let reformat ~id code =
   let code' =
     try Ocamlfmt.fmt code
-    with _err ->
-      (* Brr.Console.log [ "ocamlformat error"; Printexc.to_string _err ]; *)
+    with err ->
+      Brr.Console.error [ "OCamlformat error:"; Printexc.to_string err ];
       code
   in
   if code <> code' then respond (Formatted_source (id, code'));
@@ -17,6 +17,7 @@ let run () =
   match X_protocol.req_of_bytes marshaled_message with
   | Merlin (id, action) ->
       respond (Merlin_response (id, Merlin_worker.on_message action))
+  | Format_config conf -> Ocamlfmt.configure conf
   | Format (id, code) -> ignore (reformat ~id code : string)
   | Eval (id, line_number, code) ->
       let code = reformat ~id code in

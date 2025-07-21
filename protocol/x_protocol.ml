@@ -6,6 +6,7 @@ type request =
   | Merlin of id * Merlin_protocol.action
   | Eval of id * int * string
   | Format of id * string
+  | Format_config of string
   | Setup
 
 type output =

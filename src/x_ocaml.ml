@@ -27,6 +27,11 @@ let () =
 
 let () = Client.post worker Setup
 
+let () =
+  match current_attribute "x-ocamlformat" with
+  | None -> ()
+  | Some conf -> Client.post worker (Format_config (Jstr.to_string conf))
+
 let elt_name =
   match current_attribute "elt-name" with
   | None -> Jstr.of_string "x-ocaml"
