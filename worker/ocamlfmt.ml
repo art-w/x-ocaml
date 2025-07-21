@@ -22,15 +22,6 @@ let ast source =
 
 let fmt source =
   let ast = ast source in
-  let ast =
-    let ghostify =
-      {
-        Parser_extended.Ast_mapper.default_mapper with
-        location = (fun _ loc -> { loc with loc_ghost = true });
-      }
-    in
-    { ast with ast = ghostify.structure ghostify ast.ast }
-  in
   let with_buffer_formatter ~buffer_size k =
     let buffer = Buffer.create buffer_size in
     let fs = Format_.formatter_of_buffer buffer in
