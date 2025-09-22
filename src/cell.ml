@@ -78,7 +78,6 @@ let set_prev ~prev t =
       refresh_lines_from ~editor:p;
       if t.autorun then run t
 
-
 let set_source_from_html editor this =
   let doc = Webcomponent.text_content this in
   let doc = String.trim doc in

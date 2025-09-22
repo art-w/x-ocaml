@@ -27,7 +27,7 @@ let as_target t = Brr.El.of_jv t
 
 let get_attribute t name =
   let attr = Jv.call t "getAttribute" [| Jv.of_string name |] in
-  Jv.to_option (fun s -> s |> Jv.to_string |> Jstr.of_string) attr
+  Jv.to_option Jv.to_string attr
 
 let attach_shadow t =
   Brr.El.of_jv

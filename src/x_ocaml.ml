@@ -46,7 +46,7 @@ let _ =
   let autorun =
     match Webcomponent.get_attribute this "autorun" with
     | None -> true
-    | Some s -> s <> Jstr.of_string "false"
+    | Some s -> s <> "false"
   in
   let id = List.length !all in
   let editor = Cell.init ~id ~autorun ?extra_style ?inline_style worker this in
