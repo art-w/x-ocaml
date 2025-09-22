@@ -18,7 +18,8 @@ let define name fn =
   Jv.set test "prototype" (Jv.get html_element "prototype");
   Jv.set Jv.global "__xocaml_exported" (Jv.callback ~arity:1 fn);
   Jv.set (Jv.get test "prototype") "connectedCallback"
-    (jv_pure_js_expr "(function() { return __xocaml_exported(this) })");
+    (jv_pure_js_expr
+       "(function() { setTimeout(() => __xocaml_exported(this), 0) })");
   let _ : Jv.t = Jv.call custom_elements "define" [| Jv.of_jstr name; test |] in
   ()
 
