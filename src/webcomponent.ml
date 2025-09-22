@@ -25,6 +25,10 @@ let define name fn =
 let text_content t = Jstr.to_string @@ Jv.to_jstr @@ Jv.get t "textContent"
 let as_target t = Brr.El.of_jv t
 
+let get_attribute t name =
+  let attr = Jv.call t "getAttribute" [| Jv.of_string name |] in
+  Jv.to_option (fun s -> s |> Jv.to_string |> Jstr.of_string) attr
+
 let attach_shadow t =
   Brr.El.of_jv
   @@ Jv.call t "attachShadow"

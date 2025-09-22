@@ -10,6 +10,7 @@ type t = {
   cm : Editor.t;
   worker : Client.t;
   merlin_worker : Merlin_ext.Client.worker;
+  autorun: bool;
 }
 
 let id t = t.id
@@ -69,11 +70,14 @@ let set_prev ~prev t =
   match prev with
   | None ->
       Editor.set_previous_lines t.cm 0;
-      refresh_lines_from ~editor:t
+      refresh_lines_from ~editor:t;
+      if t.autorun then run t
   | Some p ->
       assert (p.next = None);
       p.next <- Some t;
-      refresh_lines_from ~editor:p
+      refresh_lines_from ~editor:p;
+      if t.autorun then run t
+
 
 let set_source_from_html editor this =
   let doc = Webcomponent.text_content this in
@@ -111,7 +115,7 @@ let init_css shadow ~extra_style ~inline_style =
             ();
         ]
 
-let init ~id ?extra_style ?inline_style worker this =
+let init ~id ~autorun ?extra_style ?inline_style worker this =
   let shadow = Webcomponent.attach_shadow this in
   init_css shadow ~extra_style ~inline_style;
 
@@ -132,6 +136,7 @@ let init ~id ?extra_style ?inline_style worker this =
       next = None;
       worker;
       merlin_worker;
+      autorun;
     }
   in
   Editor.on_change cm (fun () -> invalidate_after ~editor);

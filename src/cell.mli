@@ -2,6 +2,7 @@ type t
 
 val init :
   id:int ->
+  autorun:bool ->
   ?extra_style:Jstr.t ->
   ?inline_style:Jstr.t ->
   Client.t ->

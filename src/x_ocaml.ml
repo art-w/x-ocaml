@@ -43,8 +43,13 @@ let inline_style = current_attribute "inline-style"
 let _ =
   Webcomponent.define elt_name @@ fun this ->
   let prev = match !all with [] -> None | e :: _ -> Some e in
+  let autorun =
+    match Webcomponent.get_attribute this "autorun" with
+    | None -> true
+    | Some s -> s <> Jstr.of_string "false"
+  in
   let id = List.length !all in
-  let editor = Cell.init ~id ?extra_style ?inline_style worker this in
+  let editor = Cell.init ~id ~autorun ?extra_style ?inline_style worker this in
   all := editor :: !all;
   Cell.set_prev ~prev editor;
   ()
