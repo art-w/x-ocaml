@@ -56,5 +56,5 @@ let _ =
   let editor = Cell.init ~id ~run_on ?extra_style ?inline_style worker this in
   all := editor :: !all;
   Cell.set_prev ~prev editor;
-  Cell.run_loadable None !all;
+  if List.for_all Cell.loadable !all then Cell.run editor;
   ()

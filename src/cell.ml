@@ -112,7 +112,7 @@ let init_css shadow ~extra_style ~inline_style =
             ();
         ]
 let init ~id ~run_on ?extra_style ?inline_style worker
-    this =
+  this =
   let shadow = Webcomponent.attach_shadow this in
   init_css shadow ~extra_style ~inline_style;
 
@@ -187,8 +187,4 @@ let receive_merlin t msg =
   Merlin_ext.Client.on_message t.merlin_worker
     (Merlin_ext.fix_answer ~pre:(pre_source t) ~doc:(Editor.source t.cm) msg)
 
-let rec run_loadable start = function
-  | [] -> Option.iter run start
-  | cell :: rest when cell.run_on = `Load ->
-    run_loadable (if start = None then Some cell else start) rest
-  | _ :: rest -> run_loadable None rest
+let loadable t = t.run_on = `Load
