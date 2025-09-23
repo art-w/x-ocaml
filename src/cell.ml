@@ -70,13 +70,11 @@ let set_prev ~prev t =
   match prev with
   | None ->
       Editor.set_previous_lines t.cm 0;
-      refresh_lines_from ~editor:t;
-      if t.run_on = `Load then run t
+      refresh_lines_from ~editor:t
   | Some p ->
       assert (p.next = None);
       p.next <- Some t;
-      refresh_lines_from ~editor:p;
-      if t.run_on = `Load then run t
+      refresh_lines_from ~editor:p
 
 let set_source_from_html editor this =
   let doc = Webcomponent.text_content this in
@@ -188,3 +186,9 @@ let completed_run ed msg =
 let receive_merlin t msg =
   Merlin_ext.Client.on_message t.merlin_worker
     (Merlin_ext.fix_answer ~pre:(pre_source t) ~doc:(Editor.source t.cm) msg)
+
+let rec run_loadable start = function
+  | [] -> Option.iter run start
+  | cell :: rest when cell.run_on = `Load ->
+    run_loadable (if start = None then Some cell else start) rest
+  | _ :: rest -> run_loadable None rest
