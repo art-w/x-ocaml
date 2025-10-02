@@ -3,6 +3,7 @@ type t = {
   messages_comp : Code_mirror.Compartment.t;
   lines_comp : Code_mirror.Compartment.t;
   merlin_comp : Code_mirror.Compartment.t;
+  mutable merlin_extension : unit -> Code_mirror.Extension.t list;
   changes : Code_mirror.Compartment.t;
   mutable previous_lines : int;
   mutable current_doc : string;
@@ -49,14 +50,19 @@ let refresh_lines ed =
   Code_mirror.Editor.View.dispatch ed.view
   @@ Code_mirror.Compartment.reconfigure ed.lines_comp [ custom_ln ed ]
 
-let configure_merlin ed extensions =
+let refresh_merlin ed =
   Code_mirror.Editor.View.dispatch ed.view
-  @@ Code_mirror.Compartment.reconfigure ed.merlin_comp extensions
+  @@ Code_mirror.Compartment.reconfigure ed.merlin_comp (ed.merlin_extension ())
+
+let configure_merlin ed extension =
+  ed.merlin_extension <- extension;
+  refresh_merlin ed
 
 let clear x =
   x.messages <- [];
   refresh_lines x;
-  refresh_messages x
+  refresh_messages x;
+  refresh_merlin x
 
 let source_of_state s =
   String.concat "\n" @@ Array.to_list @@ Array.map Jstr.to_string
@@ -103,6 +109,7 @@ let make parent =
     messages_comp = messages;
     lines_comp = lines;
     merlin_comp = merlin;
+    merlin_extension = (fun () -> []);
     changes;
   }
 

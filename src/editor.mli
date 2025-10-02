@@ -10,4 +10,4 @@ val set_previous_lines : t -> int -> unit
 val clear_messages : t -> unit
 val add_message : t -> int -> Brr.El.t list -> unit
 val on_change : t -> (unit -> unit) -> unit
-val configure_merlin : t -> Code_mirror.Extension.t list -> unit
+val configure_merlin : t -> (unit -> Code_mirror.Extension.t list) -> unit

@@ -17,7 +17,7 @@ let id t = t.id
 let pre_source t =
   let rec go acc t =
     match t.prev with
-    | None -> String.concat "\n" (List.rev acc)
+    | None -> String.concat "\n" acc
     | Some e -> go (Editor.source e.cm :: acc) e
   in
   let s = go [] t in
@@ -140,7 +140,7 @@ let init ~id ?extra_style ?inline_style worker this =
   set_source_from_html editor this;
 
   Merlin_ext.set_context merlin (fun () -> pre_source editor);
-  Editor.configure_merlin cm (Merlin_ext.extensions merlin_worker);
+  Editor.configure_merlin cm (fun () -> Merlin_ext.extensions merlin_worker);
 
   let () =
     Mutation_observer.observe ~target:(Webcomponent.as_target this)
