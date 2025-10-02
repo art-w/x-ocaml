@@ -1,25 +1,60 @@
 open Js_of_ocaml_toplevel
 open X_protocol
 
-let environments = ref []
+module Value_env : sig
+  type t
+
+  val empty : t
+  val capture : t -> Ident.t list -> t
+  val restore : t -> unit
+end = struct
+  module String_map = Map.Make (String)
+
+  type t = Obj.t String_map.t
+
+  let empty = String_map.empty
+
+  let capture t idents =
+    List.fold_left
+      (fun t ident ->
+        let name = Translmod.toplevel_name ident in
+        let v = Topeval.getvalue name in
+        String_map.add name v t)
+      t idents
+
+  let restore t = String_map.iter (fun name v -> Topeval.setvalue name v) t
+end
+
+module Environment = struct
+  let environments = ref []
+  let init () = environments := [ (0, !Toploop.toplevel_env, Value_env.empty) ]
+
+  let reset id =
+    let rec go id = function
+      | [] -> failwith ("no environment " ^ string_of_int id)
+      | (id', _, _) :: xs when id' >= id && xs <> [] -> go id xs
+      | ((_, typing_env, value_env) as x) :: xs ->
+          Toploop.toplevel_env := typing_env;
+          Value_env.restore value_env;
+          x :: xs
+    in
+    environments := go id !environments
+
+  let capture id =
+    let values =
+      match !environments with
+      | [] -> invalid_arg "empty environment"
+      | (_, previous_env, previous_values) :: _ ->
+          let idents = Env.diff previous_env !Toploop.toplevel_env in
+          Value_env.capture previous_values idents
+    in
+    environments := (id, !Toploop.toplevel_env, values) :: !environments
+end
 
 let setup_toplevel () =
   let _ = JsooTop.initialize () in
   Sys.interactive := false;
-  environments := [ (0, !Toploop.toplevel_env) ]
-
-let reset id =
-  let rec go id = function
-    | [] -> failwith ("no environment " ^ string_of_int id)
-    | [ (_, x) ] as rest ->
-        Toploop.toplevel_env := x;
-        rest
-    | (id', _) :: xs when id' >= id -> go id xs
-    | x :: xs ->
-        Toploop.toplevel_env := snd x;
-        x :: xs
-  in
-  environments := go id !environments
+  Environment.init ()
 
 let rec parse_use_file ~caml_ppf lex =
   let _at = lex.Lexing.lex_curr_pos in
@@ -45,7 +80,7 @@ let preprocess_phrase phrase =
   | Ptop_dir _ as x -> x
 
 let execute ~id ~line_number ~output code_text =
-  reset id;
+  Environment.reset id;
   let outputs = ref [] in
   let buf = Buffer.create 64 in
   let caml_ppf = Format.formatter_of_buffer buf in
@@ -100,7 +135,7 @@ let execute ~id ~line_number ~output code_text =
                 respond ~at_loc)
             sub_phrases)
     phrases;
-  environments := (id, !Toploop.toplevel_env) :: !environments;
+  Environment.capture id;
   get_out ()
 
 let () =
