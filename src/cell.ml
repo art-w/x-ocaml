@@ -111,6 +111,7 @@ let init_css shadow ~extra_style ~inline_style =
               ]
             ();
         ]
+
 let init ~id ~run_on ?extra_style ?inline_style worker this =
   let shadow = Webcomponent.attach_shadow this in
   init_css shadow ~extra_style ~inline_style;
