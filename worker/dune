@@ -9,7 +9,9 @@
   merlin-js.worker
   ocamlformat-lib
   ocamlformat-lib.parser_extended
-  ocamlformat-lib.format_))
+  ocamlformat-lib.format_
+  x-ocaml.json
+  yojson)   )
 
 (rule
  (targets export.txt)
