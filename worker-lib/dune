@@ -3,7 +3,7 @@
  (modules x_ocaml_lib)
  (name x_ocaml_lib)
  (libraries x-ocaml.json x-ocaml.protocol js_of_ocaml))
- 
+
 (library
  (public_name x-ocaml.json)
  (name x_ocaml_json)

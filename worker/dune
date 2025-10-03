@@ -11,7 +11,7 @@
   ocamlformat-lib.parser_extended
   ocamlformat-lib.format_
   x-ocaml.json
-  yojson)   )
+  yojson))
 
 (rule
  (targets export.txt)
