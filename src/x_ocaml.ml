@@ -39,12 +39,22 @@ let elt_name =
 
 let extra_style = current_attribute "src-style"
 let inline_style = current_attribute "inline-style"
+let run_on = current_attribute "run-on" |> Option.map Jstr.to_string
+let run_on_of_string = function "click" -> `Click | "load" | _ -> `Load
 
 let _ =
   Webcomponent.define elt_name @@ fun this ->
   let prev = match !all with [] -> None | e :: _ -> Some e in
+  let run_on =
+    run_on_of_string
+    @@
+    match Webcomponent.get_attribute this "run-on" with
+    | Some s -> s
+    | None -> Option.value ~default:"load" run_on
+  in
   let id = List.length !all in
-  let editor = Cell.init ~id ?extra_style ?inline_style worker this in
+  let editor = Cell.init ~id ~run_on ?extra_style ?inline_style worker this in
   all := editor :: !all;
   Cell.set_prev ~prev editor;
+  if List.for_all Cell.loadable !all then Cell.run editor;
   ()

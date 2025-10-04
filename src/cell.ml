@@ -10,6 +10,7 @@ type t = {
   cm : Editor.t;
   worker : Client.t;
   merlin_worker : Merlin_ext.Client.worker;
+  run_on : [ `Click | `Load ];
 }
 
 let id t = t.id
@@ -69,13 +70,11 @@ let set_prev ~prev t =
   match prev with
   | None ->
       Editor.set_previous_lines t.cm 0;
-      refresh_lines_from ~editor:t;
-      run t
+      refresh_lines_from ~editor:t
   | Some p ->
       assert (p.next = None);
       p.next <- Some t;
-      refresh_lines_from ~editor:p;
-      run t
+      refresh_lines_from ~editor:p
 
 let set_source_from_html editor this =
   let doc = Webcomponent.text_content this in
@@ -113,7 +112,7 @@ let init_css shadow ~extra_style ~inline_style =
             ();
         ]
 
-let init ~id ?extra_style ?inline_style worker this =
+let init ~id ~run_on ?extra_style ?inline_style worker this =
   let shadow = Webcomponent.attach_shadow this in
   init_css shadow ~extra_style ~inline_style;
 
@@ -134,6 +133,7 @@ let init ~id ?extra_style ?inline_style worker this =
       next = None;
       worker;
       merlin_worker;
+      run_on;
     }
   in
   Editor.on_change cm (fun () -> invalidate_after ~editor);
@@ -186,3 +186,5 @@ let completed_run ed msg =
 let receive_merlin t msg =
   Merlin_ext.Client.on_message t.merlin_worker
     (Merlin_ext.fix_answer ~pre:(pre_source t) ~doc:(Editor.source t.cm) msg)
+
+let loadable t = t.run_on = `Load
