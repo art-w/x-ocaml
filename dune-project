@@ -36,7 +36,9 @@
   (ocamlfind
    (>= 1.9.8))
   (ppx_blob
-   (>= 0.9.0))))
+   (>= 0.9.0))
+  (ppx_deriving_yojson
+   (>= 3.9.0))))
 
 (package
  (name ppxlib_register)
