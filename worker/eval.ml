@@ -141,3 +141,8 @@ let execute ~id ~line_number ~output code_text =
 let () =
   Ast_mapper.register_function :=
     fun _ f -> ppx_rewriters := f :: !ppx_rewriters
+
+module Force_aliases = struct
+  include Stdlib.Either
+  include Stdlib.Bigarray
+end
