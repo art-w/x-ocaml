@@ -51,10 +51,46 @@ module Environment = struct
     environments := (id, !Toploop.toplevel_env, values) :: !environments
 end
 
-let setup_toplevel () =
-  let _ = JsooTop.initialize () in
-  Sys.interactive := false;
-  Environment.init ()
+module Toplevel_setup = struct
+  let normal_printer = !Oprint.out_phrase
+  let no_printer _ppf _ = ()
+  let delayed_actions : (unit -> unit) list ref = ref []
+
+  let run_delayed_actions () =
+    List.iter (fun f -> f ()) !delayed_actions;
+    delayed_actions := []
+
+  let quiet () =
+    Toploop.add_directive "quiet"
+      (Directive_none (fun () -> Oprint.out_phrase := no_printer))
+      { Toploop.doc = "silent phrase printing"; section = "X-ocaml" }
+
+  let loud () =
+    Toploop.add_directive "loud"
+      (Directive_none (fun () -> Oprint.out_phrase := normal_printer))
+      { Toploop.doc = "normal phrase printing"; section = "X-ocaml" }
+
+  let loud_once () =
+    Toploop.add_directive "loud_once"
+      (Directive_none
+         (fun () ->
+           Oprint.out_phrase := normal_printer;
+           delayed_actions := [ (fun () -> Oprint.out_phrase := no_printer) ]))
+      {
+        Toploop.doc = "print the current cell normally, then quiet the toplevel";
+        section = "X-ocaml";
+      }
+
+  let directives = [ quiet; loud; loud_once ]
+
+  let run () =
+    JsooTop.initialize ();
+    Sys.interactive := false;
+    Environment.init ();
+    List.iter (fun f -> f ()) directives
+end
+
+let setup_toplevel () = Toplevel_setup.run ()
 
 let rec parse_use_file ~caml_ppf lex =
   let _at = lex.Lexing.lex_curr_pos in
@@ -135,6 +171,7 @@ let execute ~id ~line_number ~output code_text =
                 respond ~at_loc)
             sub_phrases)
     phrases;
+  Toplevel_setup.run_delayed_actions ();
   Environment.capture id;
   get_out ()
 
