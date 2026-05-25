@@ -46,17 +46,27 @@ let jsoo_compile ~effects t temp_file =
   in
   let r = get_result @@ OS.Cmd.run_out cmd in
   Format.printf "%s%!" r;
+  let temp = Result.get_ok @@ Bos.OS.File.read temp_file in
   let jsoo_runtime =
     match t.runtime with
     | None -> ""
     | Some runtime_file ->
-        let contents =
-          Result.get_ok
-          @@ Bos.OS.File.read (Result.get_ok @@ Fpath.of_string runtime_file)
+        let build_runtime =
+          Cmd.(
+            v "js_of_ocaml" % "build-runtime" %% effects % runtime_file % "-o"
+            % p temp_file)
+          |> OS.Cmd.run_out |> get_result
         in
-        "(function(joo_global_object){" ^ contents ^ "}(globalThis));\n"
+        Format.printf "build-runtime(%S) = %S@." runtime_file build_runtime;
+        let runtime_contents = Result.get_ok @@ Bos.OS.File.read temp_file in
+        Printf.sprintf
+          {|((function(globalThis) {
+                var backup_runtime = globalThis.jsoo_runtime;
+                (function(globalThis){%s}(globalThis));
+                globalThis.jsoo_runtime = {...globalThis.jsoo_runtime, ...backup_runtime};
+            })(globalThis));|}
+          runtime_contents
   in
-  let temp = Result.get_ok @@ Bos.OS.File.read temp_file in
   jsoo_runtime ^ temp
 
 let jsoo_export_cma ~effects t =
