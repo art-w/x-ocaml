@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>x-ocaml: cells</title>
+  <script src="lib.js"></script>
+</head>
+<body>
+  <p>What any page of cells does: each cell's values and output show under it,
+    a mistake is reported, and a cell sees what the cells before it defined.</p>
+  <x-ocaml id="value">let answer = 6 * 7</x-ocaml>
+  <x-ocaml id="print">print_endline "hello from a cell"</x-ocaml>
+  <x-ocaml id="error">let oops = 1 + "one"</x-ocaml>
+  <x-ocaml id="later">let twice = answer * 2</x-ocaml>
+  <script src="x-ocaml.js" src-worker="x-ocaml.worker.js"></script>
+  <script>
+    (async () => {
+      await waitFor(() => ['value', 'print', 'error', 'later']
+        .every((id) => output(id) !== ''), 30000);
+      check('a value is printed with its type',
+        output('value').includes('val answer : int = 42'));
+      check('what a cell prints is shown',
+        output('print').includes('hello from a cell'));
+      check('a type error is reported',
+        output('error').includes('Error'));
+      check('a cell sees the definitions of the cells before it',
+        output('later').includes('val twice : int = 84'));
+      done();
+    })();
+  </script>
+</body>
+</html>

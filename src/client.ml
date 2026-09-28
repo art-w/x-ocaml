@@ -3,27 +3,12 @@ open Brr
 
 type t = Worker.t
 
-let current_url =
-  let url = Window.location G.window in
-  let path = Jstr.to_string (Uri.path url) in
-  let url =
-    match List.rev (String.split_on_char '/' path) with
-    | [] | "" :: _ -> url
-    | _ :: rev_path -> (
-        let path = Jstr.of_string @@ String.concat "/" @@ List.rev rev_path in
-        match Uri.with_uri ~path ~query:Jstr.empty ~fragment:Jstr.empty url with
-        | Ok url -> url
-        | Error _ -> url)
-  in
-  Jstr.to_string (Uri.to_jstr url)
-
+(* The worker is started from a data: URL, where relative URLs mean
+   nothing, so resolve them against the page as the browser would. *)
 let absolute_url url =
-  if
-    not
-      (String.starts_with ~prefix:"http:" url
-      || String.starts_with ~prefix:"https:" url)
-  then current_url ^ url
-  else url
+  let base = Jv.get (Document.to_jv G.document) "baseURI" in
+  let url = Jv.new' (Jv.get Jv.global "URL") [| Jv.of_string url; base |] in
+  Jv.to_string (Jv.get url "href")
 
 let wrap_url ?extra_load url =
   let url = absolute_url url in

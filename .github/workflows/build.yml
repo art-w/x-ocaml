@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - "master"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -37,3 +38,43 @@ jobs:
 
       - name: Test export
         run: opam exec -- dune exec -- x-ocaml fmt yojson --ppx ppx_blob -o test_export.js
+
+  # The browser tests, in a job of their own: the release build above also
+  # checks the README's integrity hash against the scripts it builds. They
+  # run on both builds: js_of_ocaml compiles the dev one a library at a time,
+  # the release one as a whole program, and the two can differ.
+  browser-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - dev
+          - release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.x
+
+      - name: Install dependencies
+        run: opam install . --deps-only --with-test
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright and Chromium
+        working-directory: test
+        run: |
+          npm install
+          npx playwright install-deps chromium
+
+      - name: Browser tests
+        run: opam exec -- dune build --profile=${{ matrix.profile }} @runbrowser

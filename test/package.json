@@ -1,0 +1,9 @@
+{
+  "name": "x-ocaml-browser-tests",
+  "private": true,
+  "scripts": {
+    "postinstall": "playwright install chromium",
+    "test": "node run_tests.js"
+  },
+  "devDependencies": { "playwright": "^1.40.0" }
+}

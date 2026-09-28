@@ -15,11 +15,24 @@ let define name fn =
              [| html_element; Jv.Jarray.create 0; Lazy.force test |]))
   in
   let test = Lazy.force test in
-  Jv.set test "prototype" (Jv.get html_element "prototype");
-  Jv.set Jv.global "__xocaml_exported" (Jv.callback ~arity:1 fn);
-  Jv.set (Jv.get test "prototype") "connectedCallback"
-    (jv_pure_js_expr
-       "(function() { setTimeout(() => __xocaml_exported(this), 0) })");
+  (* A prototype of its own: setting connectedCallback on HTMLElement's
+     would make every custom element on the page without one of its own
+     into a cell. *)
+  let proto =
+    Jv.call
+      (Jv.get Jv.global "Object")
+      "create"
+      [| Jv.get html_element "prototype" |]
+  in
+  Jv.set proto "constructor" test;
+  Jv.set test "prototype" proto;
+  let connected =
+    jv_pure_js_expr
+      "(function (f) { return function () { var self = this; \
+       setTimeout(function () { f(self); }, 0); }; })"
+  in
+  Jv.set proto "connectedCallback"
+    (Jv.apply connected [| Jv.callback ~arity:1 fn |]);
   let _ : Jv.t = Jv.call custom_elements "define" [| Jv.of_jstr name; test |] in
   ()
 

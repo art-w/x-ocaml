@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>x-ocaml: other custom elements on the page</title>
+  <script src="lib.js"></script>
+  <script>
+    // The page's own elements, with no connectedCallback of their own: one
+    // defined before x-ocaml's script, one after.
+    customElements.define('early-thing', class extends HTMLElement {});
+  </script>
+</head>
+<body>
+  <p>x-ocaml shares the page with other custom elements, and must leave
+    them alone.</p>
+  <early-thing id="early">an early thing</early-thing>
+  <late-thing id="late">a late thing</late-thing>
+  <x-ocaml id="cell">let still_works = 1 + 1</x-ocaml>
+
+  <script src="x-ocaml.js" src-worker="x-ocaml.worker.js"></script>
+  <script>
+    customElements.define('late-thing', class extends HTMLElement {});
+
+    (async () => {
+      check('cells still run', await waitFor(() => output('cell').includes('val still_works'), 30000));
+      await new Promise((r) => setTimeout(r, 300));
+      const early = document.getElementById('early'), late = document.getElementById('late');
+      check('an element defined before x-ocaml is not made a cell', !early.shadowRoot && early.textContent === 'an early thing');
+      check('nor one defined after', !late.shadowRoot && late.textContent === 'a late thing');
+      check("HTMLElement's prototype is untouched", !Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'connectedCallback'));
+      check('x-ocaml leaves no global behind', !('__xocaml_exported' in window));
+      done();
+    })();
+  </script>
+</body>
+</html>

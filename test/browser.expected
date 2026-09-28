@@ -1,0 +1,19 @@
+/sub/test_worker_absolute.html
+  [PASS] the worker starts, and runs the cell
+  [PASS] no errors on the page
+/sub/test_worker_relative.html
+  [PASS] the worker starts, and runs the cell
+  [PASS] no errors on the page
+/test_cells.html
+  [PASS] a value is printed with its type
+  [PASS] what a cell prints is shown
+  [PASS] a type error is reported
+  [PASS] a cell sees the definitions of the cells before it
+  [PASS] no errors on the page
+/test_elements.html
+  [PASS] cells still run
+  [PASS] an element defined before x-ocaml is not made a cell
+  [PASS] nor one defined after
+  [PASS] HTMLElement's prototype is untouched
+  [PASS] x-ocaml leaves no global behind
+  [PASS] no errors on the page
