@@ -1,4 +1,6 @@
 (library
  (public_name x-ocaml.lib)
  (name x_ocaml_lib)
- (libraries x-ocaml.protocol js_of_ocaml))
+ ; Only cells call it, so the worker must link it without calling it itself.
+ (library_flags (-linkall))
+ (libraries x-ocaml.protocol x-ocaml.lib.cells js_of_ocaml))

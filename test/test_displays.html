@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>x-ocaml: displays and callbacks</title>
+  <script src="lib.js"></script>
+  <script>
+    // Toy elements, as a library's page half would define them: they show
+    // their data as JSON, and call back when clicked.
+    window.toyRemoved = 0;
+    class Toy extends HTMLElement {
+      set data(s) {
+        this._data = JSON.parse(s);
+        this.textContent = this._data.label;
+      }
+      get data() { return JSON.stringify(this._data); }
+      connectedCallback() {
+        this.onclick = () => this.dispatchEvent(new CustomEvent('x-ocaml-callback',
+          { bubbles: true, detail: { token: this._data.token, payload: this._data.label } }));
+      }
+      disconnectedCallback() { window.toyRemoved++; }
+    }
+    customElements.define('toy-display', Toy);
+  </script>
+</head>
+<body>
+  <p>Code in a cell shows custom elements under it with
+    <code>X_ocaml_lib.display</code>, and the elements call it back. They
+    belong to the cell: running it again takes them away.</p>
+
+  <!-- A display, a callback, and an update from the callback -->
+  <x-ocaml id="counter">let count = ref 0
+let shown = ref None
+let token = ref ""
+
+let label () = Printf.sprintf {|{"label":"clicked %d","token":%s}|} !count !token
+
+let () =
+  token := X_ocaml_lib.string_of_token (X_ocaml_lib.callback (fun _ ->
+    incr count;
+    Option.iter (fun d -> X_ocaml_lib.update d (label ())) !shown));
+  shown := Some (X_ocaml_lib.display ~tag:"toy-display" (label ()))</x-ocaml>
+
+  <!-- An element defined after its display arrives: its data, and an
+       update sent before it is defined, wait for it; it gets the latest. -->
+  <x-ocaml id="late">let d = X_ocaml_lib.display ~tag:"toy-late" {|{"label":"first","token":0}|}
+let () = X_ocaml_lib.update d {|{"label":"latest","token":0}|}</x-ocaml>
+
+  <!-- What a callback shows belongs to the callback's cell -->
+  <x-ocaml id="spawner">let spawn =
+  X_ocaml_lib.callback (fun _ ->
+    ignore (X_ocaml_lib.display ~tag:"toy-display" {|{"label":"spawned","token":0}|}))
+
+let () = ignore (X_ocaml_lib.display ~tag:"toy-display" (Printf.sprintf {|{"label":"spawn","token":%s}|} (X_ocaml_lib.string_of_token spawn)))</x-ocaml>
+  <x-ocaml id="bystander">let bystander = ()</x-ocaml>
+
+  <!-- Running a cell again takes its displays and callbacks away -->
+  <x-ocaml id="notice">let notice = X_ocaml_lib.display ~tag:"toy-display" {|{"label":"nothing yet","token":0}|}
+let hits = ref 0</x-ocaml>
+  <x-ocaml id="rerun">let () =
+  let token = X_ocaml_lib.callback (fun _ -> incr hits) in
+  ignore
+    (X_ocaml_lib.display
+       ~on_remove:(fun () -> X_ocaml_lib.update notice {|{"label":"on_remove ran","token":0}|})
+       ~tag:"toy-display" (Printf.sprintf {|{"label":"rerun","token":%s}|} (X_ocaml_lib.string_of_token token)))</x-ocaml>
+
+  <!-- A library's element, loaded by require: the script is relative to the
+       worker, and is loaded once however often it is asked for. -->
+  <x-ocaml id="required">let () =
+  X_ocaml_lib.require ~tag:"toy-required" ~src:"toy-element.js";
+  X_ocaml_lib.require ~tag:"toy-required" ~src:"toy-element.js";
+  ignore (X_ocaml_lib.display ~tag:"toy-required" "hello")</x-ocaml>
+
+  <!-- An HTML display, updated as its cell runs -->
+  <x-ocaml id="progress">let bar = X_ocaml_lib.html "starting"
+
+let () =
+  for i = 1 to 5 do
+    let t = Sys.time () in
+    while Sys.time () -. t &lt; 0.3 do () done;
+    X_ocaml_lib.update bar (Printf.sprintf "&lt;b data-step=\"%d\"&gt;step %d of 5&lt;/b&gt;" i i)
+  done</x-ocaml>
+
+  <!-- Controls in an HTML display call back -->
+  <x-ocaml id="controls">let said = X_ocaml_lib.html "nothing"
+let say s = X_ocaml_lib.update said s
+let token = X_ocaml_lib.string_of_token (X_ocaml_lib.callback say)
+
+let () =
+  ignore
+    (X_ocaml_lib.html
+       (Printf.sprintf
+          {|&lt;button data-callback="%s" data-payload="pressed"&gt;press&lt;/button&gt;
+            &lt;input type="range" data-callback="%s" value="10"&gt;
+            &lt;input type="checkbox" data-callback="%s"&gt;
+            &lt;span data-callback="%s"&gt;no payload&lt;/span&gt;|}
+          token token token token))</x-ocaml>
+  <!-- Removing a display, silly tags and tokens, a callback that raises -->
+  <x-ocaml id="silly">let gone = X_ocaml_lib.display ~tag:"toy-display" {|{"label":"going","token":0}|}
+let () = X_ocaml_lib.remove gone
+let () = ignore (X_ocaml_lib.display ~tag:"not a tag" "x")
+let raises = X_ocaml_lib.callback (fun _ -> failwith "on purpose")
+let () = ignore (X_ocaml_lib.display ~tag:"toy-display" (Printf.sprintf {|{"label":"raise","token":%s}|} (X_ocaml_lib.string_of_token raises)))</x-ocaml>
+  <x-ocaml id="after" run-on="click">let still = "answering"</x-ocaml>
+  <x-ocaml id="hits" run-on="click">let hits_now = !hits</x-ocaml>
+
+  <script src="x-ocaml.js" src-worker="x-ocaml.worker.js"></script>
+  <script>
+    const area = (id) => { const n = document.getElementById(id).nextElementSibling; return n && n.classList.contains('x-ocaml-displays') ? n : null; };
+    const labels = (id) => (area(id) ? [...area(id).children].map((e) => e.textContent) : []);
+    const toy = (id, label) => area(id) && [...area(id).children].find((e) => e.textContent === label);
+    const run = (id) => shadow(id).querySelector('.run_btn button').click();
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    setTimeout(() => customElements.define('toy-late', class extends HTMLElement {
+      set data(s) { this.textContent = JSON.parse(s).label; }
+    }), 2500);
+    // Every text the progress display showed.
+    const during = [];
+    new MutationObserver(() => {
+      const b = area('progress');
+      const h = b && b.querySelector('x-ocaml-html');
+      if (h) during.push(h.textContent);
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    (async () => {
+      check('a display shows under its cell, with its data', await waitFor(() => toy('counter', 'clicked 0'), 30000));
+      toy('counter', 'clicked 0').click();
+      check('its callback runs, and updates it', await waitFor(() => labels('counter')[0] === 'clicked 1', 10000));
+
+      check('an element defined late gets the latest data', await waitFor(() => labels('late')[0] === 'latest', 10000));
+
+      await waitFor(() => toy('spawner', 'spawn'), 10000);
+      toy('spawner', 'spawn').click();
+      check('a display made by a callback goes under the callback\'s cell',
+        await waitFor(() => labels('spawner').join() === 'spawn,spawned', 10000) && labels('bystander').length === 0);
+
+      await waitFor(() => toy('rerun', 'rerun'), 10000);
+      const old = toy('rerun', 'rerun');
+      const oldToken = old._data.token;
+      run('rerun');
+      check('running the cell again replaces its display', await waitFor(() => toy('rerun', 'rerun') && toy('rerun', 'rerun') !== old && !old.isConnected, 10000));
+      check('on_remove runs in the worker when its display goes', await waitFor(() => labels('notice')[0] === 'on_remove ran', 10000));
+      toy('rerun', 'rerun').dispatchEvent(new CustomEvent('x-ocaml-callback', { bubbles: true, detail: { token: oldToken, payload: '' } }));
+      await sleep(300);
+
+      check('require loads the element\'s script, and it shows the display',
+        await waitFor(() => labels('required')[0] === 'required: hello', 10000));
+      check('the script is loaded once', window.toyLoads === 1 && document.querySelectorAll('script[src$="toy-element.js"]').length === 1);
+
+      await waitFor(() => area('progress') && area('progress').textContent === 'step 5 of 5', 20000);
+      check('an HTML display shows markup as markup',
+        area('progress').querySelector('x-ocaml-html b[data-step="5"]') !== null);
+      check('each update shows, not only the last',
+        during.some((text) => /step [1-4] of 5/.test(text)));
+
+      await waitFor(() => area('controls') && area('controls').querySelectorAll('x-ocaml-html').length === 2, 20000);
+      const [saidEl, ctl] = area('controls').querySelectorAll('x-ocaml-html');
+      ctl.querySelector('button').click();
+      check('a button calls back with its payload', await waitFor(() => saidEl.textContent === 'pressed', 10000));
+      const range = ctl.querySelector('input[type=range]');
+      range.value = '70'; range.dispatchEvent(new Event('input', { bubbles: true }));
+      check('an input calls back with its value', await waitFor(() => saidEl.textContent === '70', 10000));
+      ctl.querySelector('input[type=checkbox]').click();
+      check('a checkbox with whether it is checked', await waitFor(() => saidEl.textContent === 'true', 10000));
+      ctl.querySelector('span').click();
+      check('anything else when clicked', await waitFor(() => saidEl.textContent === '', 10000));
+      check('a removed display goes, and an impossible tag is skipped',
+        await waitFor(() => labels('silly').join() === 'raise', 10000));
+      toy('silly', 'raise').click();
+      await sleep(300);
+      area('silly').dispatchEvent(new CustomEvent('x-ocaml-callback', { bubbles: true, detail: { token: 123456, payload: 'x' } }));
+      area('silly').dispatchEvent(new CustomEvent('x-ocaml-callback', { bubbles: true, detail: 'not an object' }));
+      run('after');
+      check('a callback that raises, or none at all, leaves the worker answering',
+        await waitFor(() => output('after').includes('answering'), 10000));
+      run('hits');
+      check('the callback of a cell\'s earlier run is forgotten (calling it did nothing)',
+        await waitFor(() => output('hits').includes('hits_now : int = 0'), 10000));
+      done();
+    })();
+  </script>
+</body>
+</html>

@@ -160,7 +160,7 @@ let execute ~id ~line_number ~output code_text =
                 | Ptop_dir { pdir_loc = loc; _ } -> loc
                 | _ -> assert false
               in
-              X_ocaml_lib.id := (id, at_loc.loc_end.pos_cnum);
+              X_ocaml_cells.set_phrase ~cell:id ~loc:at_loc.loc_end.pos_cnum;
               try
                 Location.reset ();
                 let phrase = preprocess_phrase phrase in

@@ -1,0 +1,61 @@
+/sub/test_worker_absolute.html
+  [PASS] the worker starts, and runs the cell
+  [PASS] no errors on the page
+/sub/test_worker_relative.html
+  [PASS] the worker starts, and runs the cell
+  [PASS] no errors on the page
+/test_bad_code.html
+  [PASS] a cell that fails after showing a display keeps it, and says why it failed
+  [PASS] a tag that is not a custom element name is not shown, and the page says why
+  [PASS] a cell whose on_remove raises runs again
+  [PASS] and all its last displays go, not only those before the one that raised
+  [PASS] and the cells after it still run
+  [PASS] what an on_remove shows goes under its own cell
+  [PASS] running the failing cell again replaces its display, not adds to it
+  [PASS] no promise on the page goes unhandled
+  [PASS] no errors on the page
+/test_bad_elements.html
+  [PASS] a cell goes on after an element whose setter throws
+  [PASS] and after one whose constructor throws
+  [PASS] a token that is not a small integer calls nothing
+  [PASS] a payload that is a string goes as it is
+  [PASS] a number goes as its JSON
+  [PASS] an object as its JSON
+  [PASS] a boolean as its JSON
+  [PASS] a missing payload as nothing
+  [PASS] and after all that, a callback still works
+  [PASS] in an HTML display, a data-callback that is not a token calls nothing
+  [PASS] and one that is still calls back
+  [PASS] no errors on the page but the elements' own
+/test_cells.html
+  [PASS] a value is printed with its type
+  [PASS] what a cell prints is shown
+  [PASS] a type error is reported
+  [PASS] a cell sees the definitions of the cells before it
+  [PASS] no errors on the page
+/test_displays.html
+  [PASS] a display shows under its cell, with its data
+  [PASS] its callback runs, and updates it
+  [PASS] an element defined late gets the latest data
+  [PASS] a display made by a callback goes under the callback's cell
+  [PASS] running the cell again replaces its display
+  [PASS] on_remove runs in the worker when its display goes
+  [PASS] require loads the element's script, and it shows the display
+  [PASS] the script is loaded once
+  [PASS] an HTML display shows markup as markup
+  [PASS] each update shows, not only the last
+  [PASS] a button calls back with its payload
+  [PASS] an input calls back with its value
+  [PASS] a checkbox with whether it is checked
+  [PASS] anything else when clicked
+  [PASS] a removed display goes, and an impossible tag is skipped
+  [PASS] a callback that raises, or none at all, leaves the worker answering
+  [PASS] the callback of a cell's earlier run is forgotten (calling it did nothing)
+  [PASS] no errors on the page
+/test_elements.html
+  [PASS] cells still run
+  [PASS] an element defined before x-ocaml is not made a cell
+  [PASS] nor one defined after
+  [PASS] HTMLElement's prototype is untouched
+  [PASS] x-ocaml leaves no global behind
+  [PASS] no errors on the page

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>x-ocaml: a page below the root, its worker named relative</title>
+  <script src="../lib.js"></script>
+</head>
+<body>
+  <p>This page is in a directory of its own, and names its worker relative to it, as <code>../x-ocaml.worker.js</code>.</p>
+  <x-ocaml id="cell">let from_below = 42</x-ocaml>
+  <script src="../x-ocaml.js" src-worker="../x-ocaml.worker.js"></script>
+  <script>
+    (async () => {
+      check('the worker starts, and runs the cell',
+        await waitFor(() => output('cell').includes('val from_below'), 30000));
+      done();
+    })();
+  </script>
+</body>
+</html>

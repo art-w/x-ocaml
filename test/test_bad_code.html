@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>x-ocaml: bad code in cells, and displays</title>
+  <script src="lib.js"></script>
+  <script>
+    // What x-ocaml warns about, and promises nobody handled.
+    window.warnings = [];
+    const warn = console.warn.bind(console);
+    console.warn = (...args) => { window.warnings.push(args.join(' ')); warn(...args); };
+    window.rejections = [];
+    window.addEventListener('unhandledrejection', (e) => window.rejections.push(String(e.reason)));
+    customElements.define('toy-show', class extends HTMLElement {
+      set data(s) { this.textContent = s; }
+    });
+  </script>
+</head>
+<body>
+  <p>Code in a cell that goes wrong around its displays must not break the
+    cell, the cells after it, or the page.</p>
+
+  <x-ocaml id="counter">let runs = ref 0</x-ocaml>
+
+  <!-- A cell that fails after showing a display -->
+  <x-ocaml id="fails">let () = ignore (X_ocaml_lib.display ~tag:"toy-show" "before failing")
+let () = failwith "the cell fails"</x-ocaml>
+
+  <!-- A tag that is not a custom element's -->
+  <x-ocaml id="plain">let () = ignore (X_ocaml_lib.display ~tag:"div" "not shown")
+let plain_done = true</x-ocaml>
+
+  <!-- An on_remove that raises -->
+  <x-ocaml id="raiser">let () = incr runs
+let () = ignore (X_ocaml_lib.display ~tag:"toy-show" ~on_remove:(fun () -> failwith "on purpose") "raises")
+let () = ignore (X_ocaml_lib.display ~tag:"toy-show" "quiet")
+let run = !runs</x-ocaml>
+
+  <!-- An on_remove that shows something -->
+  <x-ocaml id="shower">let () = ignore (X_ocaml_lib.display ~tag:"toy-show" ~on_remove:(fun () -> ignore (X_ocaml_lib.display ~tag:"toy-show" "from on_remove")) "mine")</x-ocaml>
+
+  <x-ocaml id="after">let seen = !runs</x-ocaml>
+
+  <script src="x-ocaml.js" src-worker="x-ocaml.worker.js"></script>
+  <script>
+    const area = (id) => { const n = document.getElementById(id).nextElementSibling; return n && n.classList.contains('x-ocaml-displays') ? n : null; };
+    const labels = (id) => (area(id) ? [...area(id).children].map((e) => e.textContent) : []);
+    const run = (id) => shadow(id).querySelector('.run_btn button').click();
+
+    (async () => {
+      await waitFor(() => output('after').includes('val seen : int = 1'), 30000);
+      check('a cell that fails after showing a display keeps it, and says why it failed',
+        labels('fails').join() === 'before failing' && output('fails').includes('the cell fails'));
+
+      check('a tag that is not a custom element name is not shown, and the page says why',
+        output('plain').includes('plain_done') && !area('plain') && window.warnings.some((w) => w.includes('<div>')));
+
+      run('raiser');
+      check('a cell whose on_remove raises runs again',
+        await waitFor(() => output('raiser').includes('val run : int = 2'), 10000));
+      check('and all its last displays go, not only those before the one that raised',
+        labels('raiser').join() === 'raises,quiet');
+      run('after');
+      check('and the cells after it still run',
+        await waitFor(() => output('after').includes('val seen : int = 2'), 10000));
+
+      run('shower');
+      await waitFor(() => labels('shower').includes('from on_remove'), 10000);
+      check('what an on_remove shows goes under its own cell',
+        labels('shower').includes('from on_remove') &&
+        [...document.querySelectorAll('.x-ocaml-displays')].every((a) =>
+          a.previousElementSibling.id === 'shower' || ![...a.children].some((e) => e.textContent === 'from on_remove')));
+
+      run('fails');
+      await new Promise((r) => setTimeout(r, 1500));
+      check('running the failing cell again replaces its display, not adds to it',
+        labels('fails').join() === 'before failing' && output('fails').includes('the cell fails'));
+      check('no promise on the page goes unhandled', window.rejections.length === 0);
+      done();
+    })();
+  </script>
+</body>
+</html>

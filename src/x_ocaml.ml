@@ -17,6 +17,7 @@ let worker_url =
   | Some url -> Jstr.to_string url
 
 let worker = Client.make ?extra_load worker_url
+let displays = Displays.create ~post:(Client.post worker) ~worker_url ()
 
 let () =
   Client.on_message worker @@ function
@@ -24,6 +25,11 @@ let () =
   | Top_response_at (id, loc, msg) -> Cell.add_message (find_by_id id) loc msg
   | Top_response (id, msg) -> Cell.completed_run (find_by_id id) msg
   | Merlin_response (id, msg) -> Cell.receive_merlin (find_by_id id) msg
+  | Display (cell, display, tag, data) ->
+      Displays.show displays ~cell ~display ~tag data
+  | Update (display, data) -> Displays.update displays display data
+  | Remove display -> Displays.remove displays display
+  | Require (tag, src) -> Displays.require displays ~tag ~src
 
 let () = Client.post worker Setup
 
@@ -53,6 +59,7 @@ let _ =
     | None -> Option.value ~default:"load" run_on
   in
   let id = List.length !all in
+  Displays.add_cell displays id (Webcomponent.as_target this);
   let editor = Cell.init ~id ~run_on ?extra_style ?inline_style worker this in
   all := editor :: !all;
   Cell.set_prev ~prev editor;

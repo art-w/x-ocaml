@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Displays</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.5; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    .note { border-left: 3px solid #bbb; padding-left: 0.8rem; color: #555; }
+    h2 { margin-top: 2.4rem; }
+    h2 small { font-weight: 400; color: #777; font-size: 0.8em; margin-left: 0.3rem; }
+    .x-ocaml-displays { margin: 0.4rem 0 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .x-ocaml-displays button { font: inherit; padding: 0.25rem 0.8rem; margin-right: 0.3rem; }
+    .x-ocaml-displays label { margin-right: 1.2rem; }
+    x-katex { display: block; }
+    code { background: #f2f4f8; padding: 0 0.25em; border-radius: 3px; }
+    .api { font-size: 0.95em; }
+  </style>
+</head>
+<body>
+  <h1>Displays</h1>
+
+  <p>A cell can put an element on the page that stays live: it can change
+    after the cell has run, and call the cell back when the reader uses it.
+    That is <em>displays</em>, four functions in <code>X_ocaml_lib</code>:</p>
+
+  <ul class="api">
+    <li><code>display ~tag data</code> shows a <code>&lt;tag&gt;</code>
+      element under the cell, and <code>update d data</code> gives it new
+      data; <code>html</code> is a display of HTML, built in.</li>
+    <li><code>callback f</code> is a token that elements on the page can
+      call, running <code>f</code> in the worker; <code>string_of_token</code>
+      is what goes in their data.</li>
+    <li><code>require ~tag ~src</code> loads the script that defines an
+      element, once, if the page does not have it.</li>
+  </ul>
+
+  <p>Displays and callbacks belong to their cell: run it again, or stop the
+    toplevel, and they go. Everything below is OCaml in the cells, and four
+    small elements of at most 32 lines of JavaScript.</p>
+
+  <h2>Watch it compute <small>updates while the cell runs</small></h2>
+
+  <p>Until now, a cell showed nothing until each phrase finished. A display
+    updated in a loop shows the computation as it goes.</p>
+
+  <x-ocaml id="pi">let estimate = X_ocaml_lib.html "starting"
+
+let bar fraction =
+  Printf.sprintf
+    {|&lt;div style="height:8px;border-radius:4px;background:#eee"&gt;
+        &lt;div style="height:8px;border-radius:4px;background:#e8661d;width:%.0f%%"&gt;&lt;/div&gt;
+      &lt;/div&gt;|}
+    (100. *. fraction)
+
+let () =
+  let total = 3_000_000 and inside = ref 0 in
+  for i = 1 to total do
+    let x = Random.float 1. and y = Random.float 1. in
+    if (x *. x) +. (y *. y) &lt;= 1. then incr inside;
+    if i mod 100_000 = 0 then
+      X_ocaml_lib.update estimate
+        (Printf.sprintf "%s&lt;p&gt;After %d points, π ≈ &lt;b&gt;%.5f&lt;/b&gt;&lt;/p&gt;"
+           (bar (float i /. float total)) i
+           (4. *. float !inside /. float i))
+  done</x-ocaml>
+
+  <h2>Controls that call OCaml <small>no JavaScript</small></h2>
+
+  <p>Elements in an HTML display with a <code>data-callback</code> token call
+    back: an input with its value, a button when it is clicked. The plot is
+    an SVG string, redrawn by the callbacks. The controls are in a display
+    of their own, which is never replaced while you use it.</p>
+
+  <x-ocaml id="waves">let frequency = ref 3. and damping = ref 0.2 and shape = ref "sine"
+let redraw = ref ignore
+
+let set r read = X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun v -&gt; r := read v; !redraw ())
+
+let controls =
+  X_ocaml_lib.html
+    (Printf.sprintf
+       {|&lt;label&gt;frequency &lt;input type="range" min="1" max="12" step="0.1" value="3" data-callback="%s"&gt;&lt;/label&gt;
+         &lt;label&gt;damping &lt;input type="range" min="0" max="1" step="0.01" value="0.2" data-callback="%s"&gt;&lt;/label&gt;
+         &lt;p&gt;%s&lt;/p&gt;|}
+       (set frequency float_of_string) (set damping float_of_string)
+       (let pick = set shape Fun.id in
+        String.concat " "
+          (List.map
+             (fun s -&gt; Printf.sprintf {|&lt;button data-callback="%s" data-payload="%s"&gt;%s&lt;/button&gt;|} pick s s)
+             [ "sine"; "square"; "sawtooth" ])))
+
+let plot = X_ocaml_lib.html ""
+
+let wave x =
+  match !shape with
+  | "square" -&gt; if sin x &gt;= 0. then 1. else -1.
+  | "sawtooth" -&gt; 2. *. ((x /. (2. *. Float.pi)) -. floor (0.5 +. (x /. (2. *. Float.pi))))
+  | _ -&gt; sin x
+
+let () =
+  redraw :=
+    (fun () -&gt;
+      let point i =
+        let t = float i /. 600. in
+        let y = exp (-. !damping *. t *. 8.) *. wave (2. *. Float.pi *. !frequency *. t) in
+        Printf.sprintf "%.1f,%.1f" (t *. 600.) (80. -. (65. *. y))
+      in
+      X_ocaml_lib.update plot
+        (Printf.sprintf
+           {|&lt;svg viewBox="0 0 600 160" style="width:100%%;background:#fafafa;border-radius:6px"&gt;
+               &lt;line x1="0" y1="80" x2="600" y2="80" stroke="#ddd"/&gt;
+               &lt;polyline points="%s" fill="none" stroke="#e8661d" stroke-width="2"/&gt;
+             &lt;/svg&gt;
+             &lt;p&gt;A %s wave: frequency %.1f, damping %.2f.&lt;/p&gt;|}
+           (String.concat " " (List.init 601 point)) !shape !frequency !damping));
+  !redraw ()</x-ocaml>
+
+  <h2>Your own element <small>a canvas, in 32 lines</small></h2>
+
+  <p><code>examples/elements/canvas.js</code> draws circles and asks for the
+    next frame; the physics is OCaml. It asks for a frame only once the last
+    has been drawn, so a slow worker slows the animation rather than
+    queueing up. Click the box to add a ball.</p>
+
+  <x-ocaml id="balls">let () = X_ocaml_lib.require ~tag:"x-canvas" ~src:"examples/elements/canvas.js"
+
+type ball = { mutable x : float; mutable y : float; mutable vx : float; mutable vy : float;
+              r : float; colour : string }
+
+let width = 640. and height = 320.
+let colours = [| "#f47c34"; "#5fd08f"; "#6b9bf0"; "#e0a847"; "#f06a6a"; "#b48cf0" |]
+let balls = ref []
+
+let add x y =
+  balls :=
+    { x; y; vx = Random.float 8. -. 4.; vy = -. Random.float 4.;
+      r = 6. +. Random.float 12.; colour = colours.(Random.int 6) }
+    :: !balls
+
+let () = for _ = 1 to 12 do add (Random.float width) (Random.float (height /. 2.)) done
+
+let step () =
+  List.iter
+    (fun b -&gt;
+      b.vy &lt;- b.vy +. 0.3;
+      b.x &lt;- b.x +. b.vx;
+      b.y &lt;- b.y +. b.vy;
+      if b.y +. b.r &gt; height then begin b.y &lt;- height -. b.r; b.vy &lt;- -. b.vy *. 0.93 end;
+      if b.x -. b.r &lt; 0. || b.x +. b.r &gt; width then begin
+        b.x &lt;- Float.max b.r (Float.min (width -. b.r) b.x);
+        b.vx &lt;- -. b.vx
+      end)
+    !balls
+
+let running = ref true
+let canvas = X_ocaml_lib.display ~tag:"x-canvas" {|{"width":640,"height":320}|}
+let frame = ref "" and click = ref ""
+
+let draw () =
+  let circle b = Printf.sprintf {|[%.1f,%.1f,%.1f,"%s"]|} b.x b.y b.r b.colour in
+  X_ocaml_lib.update canvas
+    (Printf.sprintf {|{"width":%g,"height":%g,"circles":[%s],"frame":%s,"click":%s}|}
+       width height (String.concat "," (List.map circle !balls))
+       (if !running then !frame else "null") !click)
+
+let () =
+  frame := X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun _ -&gt; step (); draw ());
+  click := X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun p -&gt; Scanf.sscanf p "%f %f" add; if not !running then draw ());
+  draw ()
+
+let () =
+  let toggle = X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun _ -&gt; running := not !running; draw ()) in
+  let shake =
+    X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun _ -&gt;
+        List.iter (fun b -&gt; b.vy &lt;- b.vy -. 8. -. Random.float 6.; b.vx &lt;- b.vx +. Random.float 6. -. 3.) !balls)
+  in
+  ignore
+    (X_ocaml_lib.html
+       (Printf.sprintf {|&lt;button data-callback="%s"&gt;pause or play&lt;/button&gt;
+                         &lt;button data-callback="%s"&gt;shake&lt;/button&gt;
+                         click the box to add a ball|} toggle shake))</x-ocaml>
+
+  <h2>Any JavaScript library <small>KaTeX and Mermaid</small></h2>
+
+  <p>A symbolic differentiator in a few lines of OCaml, typeset by KaTeX
+    through a 16-line element.</p>
+
+  <x-ocaml id="derivatives">let () = X_ocaml_lib.require ~tag:"x-katex" ~src:"examples/elements/katex.js"
+
+type expr =
+  | X
+  | Const of float
+  | Add of expr * expr
+  | Mul of expr * expr
+  | Pow of expr * int
+  | Sin of expr
+  | Cos of expr
+  | Exp of expr
+  | Ln of expr
+
+let rec d = function
+  | X -&gt; Const 1.
+  | Const _ -&gt; Const 0.
+  | Add (a, b) -&gt; Add (d a, d b)
+  | Mul (a, b) -&gt; Add (Mul (d a, b), Mul (a, d b))
+  | Pow (a, n) -&gt; Mul (Mul (Const (float n), Pow (a, n - 1)), d a)
+  | Sin a -&gt; Mul (Cos a, d a)
+  | Cos a -&gt; Mul (Mul (Const (-1.), Sin a), d a)
+  | Exp a -&gt; Mul (Exp a, d a)
+  | Ln a -&gt; Mul (Pow (a, -1), d a)
+
+let rec simplify e =
+  let s = simplify in
+  match e with
+  | Add (a, b) -&gt; (
+      match (s a, s b) with
+      | Const 0., e | e, Const 0. -&gt; e
+      | Const x, Const y -&gt; Const (x +. y)
+      | a, b when a = b -&gt; Mul (Const 2., a)
+      | a, b -&gt; Add (a, b))
+  | Mul (a, b) -&gt; (
+      match (s a, s b) with
+      | Const 0., _ | _, Const 0. -&gt; Const 0.
+      | Const 1., e | e, Const 1. -&gt; e
+      | Const x, Const y -&gt; Const (x *. y)
+      | Const x, Mul (Const y, e) | Mul (Const y, e), Const x -&gt; Mul (Const (x *. y), e)
+      | e, Const x -&gt; Mul (Const x, e)
+      | Pow (a, m), Pow (b, n) when a = b -&gt; Pow (a, m + n)
+      | a, Pow (b, n) when a = b -&gt; Pow (a, n + 1)
+      | a, b when a = b -&gt; Pow (a, 2)
+      | a, b -&gt; Mul (a, b))
+  | Pow (_, 0) -&gt; Const 1.
+  | Pow (a, 1) -&gt; s a
+  | Pow (a, n) -&gt; Pow (s a, n)
+  | Sin a -&gt; Sin (s a)
+  | Cos a -&gt; Cos (s a)
+  | Exp a -&gt; Exp (s a)
+  | Ln a -&gt; Ln (s a)
+  | e -&gt; e
+
+(* A sum of monomials, each a coefficient times powers of factors: like
+   terms are collected, and so are like factors. *)
+let rec factors = function
+  | Mul (a, b) -&gt; let c1, f1 = factors a and c2, f2 = factors b in (c1 *. c2, f1 @ f2)
+  | Const c -&gt; (c, [])
+  | Pow (a, n) -&gt; (1., [ (a, n) ])
+  | e -&gt; (1., [ (e, 1) ])
+
+let rec terms = function
+  | Add (a, b) -&gt; terms a @ terms b
+  | Mul (a, b) -&gt; List.concat_map (fun x -&gt; List.map (fun y -&gt; Mul (x, y)) (terms b)) (terms a)
+  | e -&gt; [ e ]
+
+let merge fs =
+  List.fold_left
+    (fun acc (b, n) -&gt;
+      match List.assoc_opt b acc with
+      | Some m -&gt; (b, m + n) :: List.remove_assoc b acc
+      | None -&gt; (b, n) :: acc)
+    [] fs
+  |&gt; List.filter (fun (_, n) -&gt; n &lt;&gt; 0)
+  |&gt; List.sort compare
+
+let product (c, fs) =
+  let body = List.map (fun (b, n) -&gt; if n = 1 then b else Pow (b, n)) fs in
+  match (c, body) with
+  | c, [] -&gt; Const c
+  | 1., f :: rest -&gt; List.fold_left (fun a b -&gt; Mul (a, b)) f rest
+  | c, f :: rest -&gt; Mul (Const c, List.fold_left (fun a b -&gt; Mul (a, b)) f rest)
+
+let normal e =
+  let monomials = List.map (fun t -&gt; let c, fs = factors t in (merge fs, c)) (terms e) in
+  let collected =
+    List.fold_left
+      (fun acc (fs, c) -&gt;
+        match List.assoc_opt fs acc with
+        | Some c' -&gt; (fs, c +. c') :: List.remove_assoc fs acc
+        | None -&gt; acc @ [ (fs, c) ])
+      [] monomials
+  in
+  match List.filter (fun (_, c) -&gt; c &lt;&gt; 0.) collected with
+  | [] -&gt; Const 0.
+  | (fs, c) :: rest -&gt;
+      List.fold_left (fun a (fs, c) -&gt; Add (a, product (c, fs))) (product (c, fs)) rest
+
+let rec fix ?(n = 20) e =
+  let e' = normal (simplify e) in
+  if e' = e || n = 0 then e' else fix ~n:(n - 1) e'
+
+let num c = if Float.is_integer c then Printf.sprintf "%.0f" c else Printf.sprintf "%g" c
+
+let rec tex = function
+  | X -&gt; "x"
+  | Const c -&gt; num c
+  | Add (a, Mul (Const c, b)) when c &lt; 0. -&gt;
+      tex a ^ " - " ^ if c = -1. then factor b else tex (Mul (Const (-. c), b))
+  | Add (a, b) -&gt; tex a ^ " + " ^ tex b
+  | Mul (Const -1., b) -&gt; "-" ^ factor b
+  | Mul (a, Pow (b, n)) when n &lt; 0 -&gt; "\\frac{" ^ tex a ^ "}{" ^ tex (Pow (b, - n)) ^ "}"
+  | Mul (a, b) -&gt; factor a ^ " " ^ factor b
+  | Pow (a, 1) -&gt; tex a
+  | Pow (a, n) when n &lt; 0 -&gt; "\\frac{1}{" ^ tex (Pow (a, - n)) ^ "}"
+  | Pow (a, n) -&gt; atom a ^ "^{" ^ string_of_int n ^ "}"
+  | Sin a -&gt; "\\sin " ^ atom a
+  | Cos a -&gt; "\\cos " ^ atom a
+  | Exp a -&gt; "e^{" ^ tex a ^ "}"
+  | Ln a -&gt; "\\ln " ^ atom a
+and atom e = match e with X | Const _ -&gt; tex e | _ -&gt; "\\left(" ^ tex e ^ "\\right)"
+and factor e = match e with Add _ -&gt; "\\left(" ^ tex e ^ "\\right)" | _ -&gt; tex e
+
+let functions =
+  [ Mul (Pow (X, 3), Sin X);
+    Exp (Pow (X, 2));
+    Ln (Add (Pow (X, 2), Const 1.));
+    Sin (Cos X) ]
+
+let order = ref 1
+let rec nth n f = if n = 0 then f else nth (n - 1) (fix (d f))
+
+let formula f =
+  let dn = if !order = 1 then "\\frac{d}{dx}" else Printf.sprintf "\\frac{d^{%d}}{dx^{%d}}" !order !order in
+  Printf.sprintf "%s\\left(%s\\right) = %s" dn (tex f) (tex (nth !order f))
+
+let shown = List.map (fun f -&gt; (f, X_ocaml_lib.display ~tag:"x-katex" (formula f))) functions
+
+let () =
+  let again =
+    X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun step -&gt;
+        order := max 1 (!order + int_of_string step);
+        List.iter (fun (f, d) -&gt; X_ocaml_lib.update d (formula f)) shown)
+  in
+  ignore
+    (X_ocaml_lib.html
+       (Printf.sprintf {|&lt;button data-callback="%s" data-payload="1"&gt;differentiate again&lt;/button&gt;
+                         &lt;button data-callback="%s" data-payload="-1"&gt;less&lt;/button&gt;|} again again))</x-ocaml>
+
+  <p>A binary search tree, drawn by Mermaid through a 17-line element. Keep
+    inserting bigger numbers and watch it lean.</p>
+
+  <x-ocaml id="tree">let () = X_ocaml_lib.require ~tag:"x-mermaid" ~src:"examples/elements/mermaid.js"
+
+type tree = Leaf | Node of tree * int * tree
+
+let rec insert x = function
+  | Leaf -&gt; Node (Leaf, x, Leaf)
+  | Node (l, y, r) as t -&gt;
+      if x &lt; y then Node (insert x l, y, r) else if x &gt; y then Node (l, y, insert x r) else t
+
+let rec height = function Leaf -&gt; 0 | Node (l, _, r) -&gt; 1 + max (height l) (height r)
+let rec size = function Leaf -&gt; 0 | Node (l, _, r) -&gt; size l + 1 + size r
+
+let rec lines = function
+  | Leaf -&gt; []
+  | Node (l, x, r) -&gt;
+      let edge = function
+        | Node (_, y, _) -&gt; [ Printf.sprintf "  n%d((%d)) --&gt; n%d((%d))" x x y y ]
+        | Leaf -&gt; []
+      in
+      Printf.sprintf "  n%d((%d))" x x :: edge l @ edge r @ lines l @ lines r
+
+let diagram t = String.concat "\n" ("graph TD" :: lines t)
+
+let tree = ref (List.fold_left (fun t x -&gt; insert x t) Leaf [ 50; 30; 70; 20; 40; 60; 80 ])
+let shown = X_ocaml_lib.display ~tag:"x-mermaid" (diagram !tree)
+let stats = X_ocaml_lib.html ""
+let describe () =
+  X_ocaml_lib.update stats (Printf.sprintf "%d numbers, %d levels deep" (size !tree) (height !tree))
+
+let () =
+  describe ();
+  let add =
+    X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun how -&gt;
+        let x = if how = "big" then 100 + size !tree else Random.int 100 in
+        tree := insert x !tree;
+        X_ocaml_lib.update shown (diagram !tree);
+        describe ())
+  in
+  ignore
+    (X_ocaml_lib.html
+       (Printf.sprintf {|&lt;button data-callback="%s" data-payload="random"&gt;insert a random number&lt;/button&gt;
+                         &lt;button data-callback="%s" data-payload="big"&gt;insert a bigger one&lt;/button&gt;|} add add))</x-ocaml>
+
+  <h2>Sound <small>Web Audio</small></h2>
+
+  <p>Melodies composed in OCaml, played by a 28-line element. The walks are
+    random: ask for new ones.</p>
+
+  <x-ocaml id="tune">let () = X_ocaml_lib.require ~tag:"x-tone" ~src:"examples/elements/tone.js"
+
+(* A MIDI note number as a frequency: 69 is the A above middle C. *)
+let hz n = 440. *. (2. ** (float (n - 69) /. 12.))
+
+let major = [| 0; 2; 4; 5; 7; 9; 11 |] and minor = [| 0; 2; 3; 5; 7; 8; 10 |]
+
+(* The n-th note of the scale, going up through the octaves. *)
+let degree scale root n = root + (12 * (n / 7)) + scale.(n mod 7)
+
+(* A melody by a random walk on the scale, ending at home. *)
+let walk scale root length =
+  let rec go n pos acc =
+    if n = 0 then List.rev ((hz (degree scale root 7), 0.6) :: acc)
+    else
+      let step = [| -2; -1; -1; 1; 1; 2; 3 |].(Random.int 7) in
+      let pos = max 0 (min 13 (pos + step)) in
+      let length = if Random.int 4 = 0 then 0.36 else 0.18 in
+      go (n - 1) pos ((hz (degree scale root pos), length) :: acc)
+  in
+  go length 7 []
+
+let json label notes =
+  Printf.sprintf {|{"label":%S,"notes":[%s]}|} label
+    (String.concat "," (List.map (fun (f, s) -&gt; Printf.sprintf "[%.2f,%.2f]" f s) notes))
+
+let scale_run scale root =
+  List.init 8 (fun i -&gt; (hz (degree scale root i), 0.2)) @ [ (0., 0.2) ]
+  @ List.init 8 (fun i -&gt; (hz (degree scale root (7 - i)), 0.2))
+
+let tunes =
+  [ ("C major, up and down", scale_run major 60);
+    ("A minor, up and down", scale_run minor 57);
+    ("a walk in D major", walk major 62 24);
+    ("a walk in E minor", walk minor 64 24) ]
+
+let players = List.map (fun (label, notes) -&gt; X_ocaml_lib.display ~tag:"x-tone" (json label notes)) tunes
+
+let () =
+  let again =
+    X_ocaml_lib.string_of_token @@ X_ocaml_lib.callback (fun _ -&gt;
+        X_ocaml_lib.update (List.nth players 2) (json "a walk in D major" (walk major 62 24));
+        X_ocaml_lib.update (List.nth players 3) (json "a walk in E minor" (walk minor 64 24)))
+  in
+  ignore (X_ocaml_lib.html (Printf.sprintf {|&lt;button data-callback="%s"&gt;new walks&lt;/button&gt;|} again))</x-ocaml>
+
+  <p class="note">x-ocaml knows nothing about any of these elements. It
+    places each display under its cell, gives it its data, carries its
+    callbacks to the worker, and takes it away when the cell runs again.</p>
+
+  <script src="../x-ocaml.js" src-worker="../x-ocaml.worker.js" x-ocamlformat="disable"></script>
+</body>
+</html>

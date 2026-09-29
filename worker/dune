@@ -6,6 +6,7 @@
   js_of_ocaml-toplevel
   x-ocaml.protocol
   x-ocaml.lib
+  x-ocaml.lib.cells
   merlin-js.worker
   ocamlformat-lib
   ocamlformat-lib.parser_extended

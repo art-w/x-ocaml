@@ -19,7 +19,14 @@ let run () =
       respond (Merlin_response (id, Merlin_worker.on_message action))
   | Format_config conf -> Ocamlfmt.configure conf
   | Format (id, code) -> ignore (reformat ~id code : string)
+  | Callback (k, payload) -> (
+      try X_ocaml_cells.invoke k payload
+      with e ->
+        Brr.Console.error [ "x-ocaml: a callback raised"; Printexc.to_string e ]
+      )
   | Eval (id, line_number, code) ->
+      (* What the cell showed or registered when it last ran goes. *)
+      X_ocaml_cells.forget_cell id;
       let code = reformat ~id code in
       let output ~loc out = respond (Top_response_at (id, loc, out)) in
       let result = Eval.execute ~output ~id ~line_number code in

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>x-ocaml: bad elements</title>
+  <script src="lib.js"></script>
+  <script>
+    customElements.define('toy-show', class extends HTMLElement {
+      set data(s) { this.textContent = s; }
+    });
+    // A library's elements with bugs of their own.
+    customElements.define('bad-setter', class extends HTMLElement {
+      set data(s) { throw new Error('the setter throws'); }
+    });
+    customElements.define('bad-constructor', class extends HTMLElement {
+      constructor() { super(); throw new Error('the constructor throws'); }
+    });
+  </script>
+</head>
+<body>
+  <p>An element that goes wrong, or calls back with nonsense, must not break
+    its cell, the worker, or the page.</p>
+
+  <x-ocaml id="setter">let () = ignore (X_ocaml_lib.display ~tag:"bad-setter" "x")
+let () = ignore (X_ocaml_lib.display ~tag:"toy-show" "after the bad setter")
+let setter_done = true</x-ocaml>
+
+  <x-ocaml id="constructor">let () = ignore (X_ocaml_lib.display ~tag:"bad-constructor" "x")
+let () = ignore (X_ocaml_lib.display ~tag:"toy-show" "after the bad constructor")
+let constructor_done = true</x-ocaml>
+
+  <x-ocaml id="caller">let shown = X_ocaml_lib.display ~tag:"toy-show" "nothing yet"
+let token = X_ocaml_lib.callback (fun p -> X_ocaml_lib.update shown ("got " ^ p))
+let token_text = X_ocaml_lib.string_of_token token</x-ocaml>
+
+  <!-- data-callback values that are not tokens -->
+  <x-ocaml id="html">let () =
+  ignore
+    (X_ocaml_lib.html
+       (Printf.sprintf
+          {|&lt;button data-callback="abc"&gt;letters&lt;/button&gt;
+            &lt;button data-callback=""&gt;empty&lt;/button&gt;
+            &lt;button data-callback="%s.5"&gt;a fraction&lt;/button&gt;
+            &lt;button data-callback="%s" data-payload="html"&gt;a token&lt;/button&gt;|}
+          token_text token_text))</x-ocaml>
+  <script src="x-ocaml.js" src-worker="x-ocaml.worker.js"></script>
+  <script>
+    const area = (id) => { const n = document.getElementById(id).nextElementSibling; return n && n.classList.contains('x-ocaml-displays') ? n : null; };
+    const labels = (id) => (area(id) ? [...area(id).children].map((e) => e.textContent) : []);
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    // The elements' own errors are expected; any other is not.
+    const expected = ['the setter throws', 'the constructor throws'];
+
+    (async () => {
+      await waitFor(() => output('caller').includes('val token_text'), 30000);
+      check('a cell goes on after an element whose setter throws',
+        output('setter').includes('setter_done') && labels('setter').includes('after the bad setter'));
+      check('and after one whose constructor throws',
+        output('constructor').includes('constructor_done') && labels('constructor').includes('after the bad constructor'));
+
+      const token = Number(/val token_text : string = "(\d+)"/.exec(output('caller'))[1]);
+      const el = area('caller').firstElementChild;
+      const fire = (detail) => el.dispatchEvent(new CustomEvent('x-ocaml-callback', { bubbles: true, detail }));
+      const answer = async (detail) => {
+        const before = el.textContent;
+        fire(detail);
+        await sleep(300);
+        return el.textContent === before ? null : el.textContent;
+      };
+
+      const ignored = [];
+      for (const t of [String(token), token + 0.5, 2 ** 40, null, true, undefined]) {
+        if ((await answer({ token: t, payload: 'odd token' })) !== null) ignored.push(String(t));
+      }
+      check('a token that is not a small integer calls nothing', ignored.length === 0);
+      for (const d of [null, 'not an object', 42]) fire(d);
+
+      check('a payload that is a string goes as it is', (await answer({ token, payload: 'text' })) === 'got text');
+      check('a number goes as its JSON', (await answer({ token, payload: 42 })) === 'got 42');
+      check('an object as its JSON', (await answer({ token, payload: { a: [1, 'b'] } })) === 'got {"a":[1,"b"]}');
+      check('a boolean as its JSON', (await answer({ token, payload: false })) === 'got false');
+      check('a missing payload as nothing', (await answer({ token })) === 'got ');
+      check('and after all that, a callback still works', (await answer({ token, payload: 'still' })) === 'got still');
+
+      await waitFor(() => area('html') && area('html').querySelectorAll('button').length === 4, 10000);
+      const buttons = [...area('html').querySelectorAll('button')];
+      const before = el.textContent;
+      for (const b of buttons.slice(0, 3)) b.click();
+      await sleep(500);
+      check('in an HTML display, a data-callback that is not a token calls nothing', el.textContent === before);
+      buttons[3].click();
+      check('and one that is still calls back', await waitFor(() => el.textContent === 'got html', 5000));
+      check('no errors on the page but the elements\' own',
+        window.pageErrors.every((e) => expected.some((x) => e.includes(x))));
+      window.testResults.done = true;
+    })();
+  </script>
+</body>
+</html>
